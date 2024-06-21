@@ -6,13 +6,11 @@
 
 #include "camera.h"
 
-
 #define DRAW_CONTOUR 0
 #define THICKNESS_VALUE 4
 #define MARKER_ID_UNDEFINED -1
 
 
-// Added in Sheet 3 - Ex7 Start *****************************************************************
 int subpixSampleSafe(const Mat& pSrc, const Point2f& p) {
     // floorf -> like int casting, but -2.3 will be the smaller number -> -3
     // Point is float, we want to know which color does it have
@@ -77,7 +75,7 @@ Mat calculateStripDimensions(double dx, double dy, StripDimensions& strip_dimens
     // 8 bit unsigned char with 1 channel, gray
     return Mat(stripSize, CV_8UC1);
 }
-// Added in Sheet 3 - Ex7 End *****************************************************************
+
 
 Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false)
 {
@@ -216,12 +214,11 @@ void Camera::loop()
             auto board = find_board_corners(markers);
             std::vector<Point> approx_board;
             for (auto corner : board) {
-                std::cout << corner <<std::endl;
+                // std::cout << corner <<std::endl;
                 approx_board.push_back(corner);
             }
             
-            Scalar color_contour = Scalar(0, 255, 0);
-            cv::polylines(frame, approx_board, true, color_contour, THICKNESS_VALUE);
+            auto board_grid = calculateBoardGrid(approx_board, markers, &frame);
 
             counter++;
         }
@@ -234,6 +231,105 @@ void Camera::loop()
 
         std::this_thread::sleep_for(remaining);
     }
+}
+
+
+std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board, std::vector<labeled_marker> marker_pairs, cv::Mat* frame)
+{
+    // Sort the corners in a way that they form a rectangle, if one connects the corners in the order they are stored in the vector
+    std::sort(approx_board.begin(), approx_board.end(), [](cv::Point a, cv::Point b) { return a.x < b.x; });
+    if (approx_board[0].y > approx_board[1].y)
+    {
+        std::swap(approx_board[0], approx_board[1]);
+    }
+    if (approx_board[2].y < approx_board[3].y)
+    {
+        std::swap(approx_board[2], approx_board[3]);
+    }    
+
+    // Draw the outline of the board
+    cv::polylines(*frame, approx_board, true, CV_RGB(255, 0, 0), THICKNESS_VALUE);
+    // Mark the first corner with a green circle
+    cv::circle(*frame, approx_board[0], 5, CV_RGB(0, 255, 0), -1);
+
+    // Divide the board into a grid of 8x8 squares
+    std::vector<cv::Point2f> board_grid;
+    for (int i = 0; i < 9; i++)
+    {
+        // Calculate the position of the current row
+        cv::Point2f row_start = approx_board[0] + (approx_board[3] - approx_board[0]) * i / 8;
+        cv::Point2f row_end = approx_board[1] + (approx_board[2] - approx_board[1]) * i / 8;
+
+        for (int j = 0; j < 9; j++)
+        {
+            // Calculate the position of the current square
+            cv::Point2f square = row_start + (row_end - row_start) * j / 8;
+            board_grid.push_back(square);
+        }
+    }
+
+    // // Draw the grid
+    // for (int i = 0; i < 9; i++)
+    // {
+    //     cv::line(*frame, board_grid[i * 9], board_grid[i * 9 + 8], CV_RGB(0, 0, 255), THICKNESS_VALUE);
+    //     cv::line(*frame, board_grid[i], board_grid[72 + i], CV_RGB(0, 0, 255), THICKNESS_VALUE);
+    // }
+
+    // // Draw the corners of the grid
+    // for (int i = 0; i < 81; i++)
+    // {
+    //     cv::circle(*frame, board_grid[i], 2, CV_RGB(0, 0, 255), -1);
+    // }
+
+
+
+
+
+
+    // Same but with cv::aruco::GridBoard
+    auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME::DICT_4X4_50);
+    auto detectorParams = cv::aruco::DetectorParameters::create();
+
+    cv::aruco::ArucoDetector detector(dictionary, detectorParams);
+    auto board = cv::aruco::GridBoard::create(2, 2, 0.031, 0.1, dictionary);
+
+
+    std::vector<std::array<cv::Point2f, 4>> marker_corners(marker_pairs.size());
+    // get all the corners of the markers
+    std::transform(marker_pairs.begin(), marker_pairs.end(), marker_corners.begin(), [](labeled_marker marker) {
+        return marker.first;
+    });
+
+    // get all of the ids
+    std::vector<int> ids(marker_pairs.size());
+    std::transform(marker_pairs.begin(), marker_pairs.end(), ids.begin(), [](labeled_marker marker) {
+        return marker.second;
+    });
+
+    // detect the markers
+    detector.detectMarkers(frame, marker_corners, ids);
+
+     // Refind strategy to detect more markers
+    if(true)
+    detector.refineDetectedMarkers(frame, board, marker_corners, ids, camMatrix, distCoeffs);
+    
+    // Estimate the board pose
+    cv::Mat objPoints, imgPoints;
+    board->matchImagePoints(corners, ids, objPoints, imgPoints);
+
+    // Find pose
+    cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
+
+    // Draw the detected markers
+    cv::aruco::drawDetectedMarkers(frame, corners, ids);
+
+    // Draw the board
+    cv::aruco::drawAxis(frame, camMatrix, distCoeffs, rvec, tvec, 0.1);
+
+    // Draw Frame axis
+    cv::drawFrameAxes(frame, camMatrix, distCoeffs, rvec, tvec, 0.1);
+
+    return board_grid;
 }
 
 
@@ -257,7 +353,7 @@ std::vector<std::vector<Point>> Camera::computeApproxContours(cv::Mat* frame_in,
     // RETR_LIST is a list of all found contour, SIMPLE is to just save the begin and ending of each edge which belongs to the contour
     cv::findContours(*frame_in, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
 
-    //cv::drawContours(frame, contours, -1, Scalar(0, 255, 0), 4);
+    //cv::drawContours(frame, contours, -1, CV_RGB(0, 255, 0), 4);
 
     std::vector<std::vector<Point>> approx_contours;
     // size is always positive, so unsigned int -> size_t; if you have not initialized the vector it is -1, hence crash
@@ -290,8 +386,7 @@ std::vector<std::vector<Point>> Camera::computeApproxContours(cv::Mat* frame_in,
         // -> Cleaning done!
 
         // 1 -> 1 contour, we have a closed contour, true -> closed, 4 -> thickness
-        Scalar color_contour = Scalar(0, 0, 255);
-        cv::polylines(*frame_out, approx_contour, true, color_contour, THICKNESS_VALUE);
+        // cv::polylines(*frame_out, approx_contour, true, CV_RGB(255, 0, 0), THICKNESS_VALUE);
 
         approx_contours.push_back(approx_contour);
     }
@@ -643,7 +738,7 @@ int Camera::getMarkerID(cv::Mat* frame_src, std::array<cv::Point2f, 4> subpix_co
         cv::Point point_draw_marker_id;
         point_draw_marker_id.x = (int)(subpix_corners[0].x + subpix_corners[1].x + subpix_corners[2].x + subpix_corners[3].x) / 4;
         point_draw_marker_id.y = (int)(subpix_corners[0].y + subpix_corners[1].y + subpix_corners[2].y + subpix_corners[3].y) / 4;
-        cv::putText(frame, std::to_string(code), point_draw_marker_id, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 2);
+        cv::putText(frame, std::to_string(code), point_draw_marker_id, cv::FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255, 255, 255), 2);
     }
 
     return code;
@@ -817,3 +912,4 @@ std::vector<labeled_marker> filtered_marker;
     return corners;
 
 }
+

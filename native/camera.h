@@ -32,12 +32,15 @@ extern "C"
 #ifdef __cplusplus
 }
 
+#pragma once
 #include <thread>
 #include <mutex>
 #include <memory>
 
+// #include <opencv2/objdetect/aruco_board.hpp>
 #include <opencv2/videoio/videoio.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/aruco.hpp>
 #include <opencv2/opencv.hpp>
 
 using namespace cv;
@@ -101,6 +104,7 @@ typedef std::shared_ptr<Camera> SharedCamera;
 SharedCamera camera_open(int id = -1);
 
 std::array<cv::Point2f,4> find_board_corners(std::vector<labeled_marker> marker);
+std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board, std::vector<labeled_marker> marker_pairs, cv::Mat* frame);
 
 #endif
 
