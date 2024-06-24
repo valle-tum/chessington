@@ -9,6 +9,7 @@
 #define DRAW_CONTOUR 0
 #define THICKNESS_VALUE 4
 #define MARKER_ID_UNDEFINED -1
+#define SCRATCH 0
 
 
 int subpixSampleSafe(const Mat& pSrc, const Point2f& p) {
@@ -268,23 +269,21 @@ std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board,
         }
     }
 
-    // // Draw the grid
-    // for (int i = 0; i < 9; i++)
-    // {
-    //     cv::line(*frame, board_grid[i * 9], board_grid[i * 9 + 8], CV_RGB(0, 0, 255), THICKNESS_VALUE);
-    //     cv::line(*frame, board_grid[i], board_grid[72 + i], CV_RGB(0, 0, 255), THICKNESS_VALUE);
-    // }
+#if SCRATCH
+    // Draw the grid
+    for (int i = 0; i < 9; i++)
+    {
+        cv::line(*frame, board_grid[i * 9], board_grid[i * 9 + 8], CV_RGB(0, 0, 255), THICKNESS_VALUE);
+        cv::line(*frame, board_grid[i], board_grid[72 + i], CV_RGB(0, 0, 255), THICKNESS_VALUE);
+    }
 
-    // // Draw the corners of the grid
-    // for (int i = 0; i < 81; i++)
-    // {
-    //     cv::circle(*frame, board_grid[i], 2, CV_RGB(0, 0, 255), -1);
-    // }
+    // Draw the corners of the grid
+    for (int i = 0; i < 81; i++)
+    {
+        cv::circle(*frame, board_grid[i], 2, CV_RGB(0, 0, 255), -1);
+    }
 
-
-
-
-
+#else
 
     // Same but with cv::aruco::GridBoard
     auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME::DICT_4X4_50);
@@ -328,6 +327,8 @@ std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board,
 
     // Draw Frame axis
     cv::drawFrameAxes(frame, camMatrix, distCoeffs, rvec, tvec, 0.1);
+
+#endif
 
     return board_grid;
 }
