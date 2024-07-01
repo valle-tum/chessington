@@ -175,6 +175,7 @@ anims/game_start = SubResource( 6 )
 anims/greeting_blink = SubResource( 7 )
 
 [node name="ItemList" type="ItemList" parent="."]
+visible = false
 margin_left = 301.0
 margin_top = 2.0
 margin_right = 418.0
@@ -183,6 +184,7 @@ auto_height = true
 script = ExtResource( 6 )
 
 [node name="Panel" type="Panel" parent="."]
+visible = false
 margin_right = 297.0
 margin_bottom = 26.0
 

@@ -40,8 +40,8 @@ extern "C"
 #include <opencv2/objdetect/aruco_detector.hpp>
 #include <opencv2/videoio/videoio.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/aruco.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/objdetect/objdetect.hpp>
 
 using namespace cv;
 
@@ -104,7 +104,8 @@ typedef std::shared_ptr<Camera> SharedCamera;
 SharedCamera camera_open(int id = -1);
 
 std::array<cv::Point2f,4> find_board_corners(std::vector<labeled_marker> marker);
-std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board, std::vector<labeled_marker> marker_pairs, cv::Mat* frame);
+// std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board, std::vector<labeled_marker> marker_pairs, cv::Mat* frame);
+std::vector<cv::Point2f> calculateBoardGrid(cv::Mat* frameIn, cv::Mat* frameOut);
 
 #endif
 

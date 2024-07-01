@@ -23,7 +23,7 @@ signal game_start
 signal force
 
 func _ready():
-	camera.set_default(0);
+#	camera.set_default(0);
 	camera.open();
 	camera.flip(true, false);
 	camera_size = Vector2(camera.get_width(), camera.get_height());

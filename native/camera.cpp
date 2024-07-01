@@ -10,7 +10,7 @@
 #define THICKNESS_VALUE 4
 #define MARKER_ID_UNDEFINED -1
 #define SCRATCH 0
-
+#define WEBCAM 1
 
 int subpixSampleSafe(const Mat& pSrc, const Point2f& p) {
     // floorf -> like int casting, but -2.3 will be the smaller number -> -3
@@ -203,23 +203,24 @@ void Camera::loop()
                 cv::flip(frame, frame, code);
             }
 
-            this->computeThreshold(&frame, &greyscale);
+            // this->computeThreshold(&frame, &greyscale);
 
-            std::vector<std::vector<cv::Point>> approx_contours = this->computeApproxContours(&greyscale, &frame);
-            std::vector<labeled_marker> markers;
-            for (int i = 0; i < approx_contours.size(); i++)
-            {
-                markers.push_back(this->processContour(approx_contours[i], &frame));
-            }
+            // std::vector<std::vector<cv::Point>> approx_contours = this->computeApproxContours(&greyscale, &frame);
+            // std::vector<labeled_marker> markers;
+            // for (int i = 0; i < approx_contours.size(); i++)
+            // {
+            //     markers.push_back(this->processContour(approx_contours[i], &frame));
+            // }
 
-            auto board = find_board_corners(markers);
-            std::vector<Point> approx_board;
-            for (auto corner : board) {
-                // std::cout << corner <<std::endl;
-                approx_board.push_back(corner);
-            }
+            // auto board = find_board_corners(markers);
+            // std::vector<Point> approx_board;
+            // for (auto corner : board) {
+            //     // std::cout << corner <<std::endl;
+            //     approx_board.push_back(corner);
+            // }
             
-            auto board_grid = calculateBoardGrid(approx_board, markers, &frame);
+            // auto board_grid = calculateBoardGrid(approx_board, markers, &frame);
+            auto board_grid = calculateBoardGrid(&frame, &frame);
 
             counter++;
         }
@@ -235,19 +236,20 @@ void Camera::loop()
 }
 
 
-std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board, std::vector<labeled_marker> marker_pairs, cv::Mat* frame)
+std::vector<cv::Point2f> calculateBoardGrid(cv::Mat* frameIn, cv::Mat* frameOut)
 {
-    // Sort the corners in a way that they form a rectangle, if one connects the corners in the order they are stored in the vector
-    std::sort(approx_board.begin(), approx_board.end(), [](cv::Point a, cv::Point b) { return a.x < b.x; });
-    if (approx_board[0].y > approx_board[1].y)
-    {
-        std::swap(approx_board[0], approx_board[1]);
-    }
-    if (approx_board[2].y < approx_board[3].y)
-    {
-        std::swap(approx_board[2], approx_board[3]);
-    }    
+    // // Sort the corners in a way that they form a rectangle, if one connects the corners in the order they are stored in the vector
+    // std::sort(approx_board.begin(), approx_board.end(), [](cv::Point a, cv::Point b) { return a.x < b.x; });
+    // if (approx_board[0].y > approx_board[1].y)
+    // {
+    //     std::swap(approx_board[0], approx_board[1]);
+    // }
+    // if (approx_board[2].y < approx_board[3].y)
+    // {
+    //     std::swap(approx_board[2], approx_board[3]);
+    // }    
 
+#if SCRATCH
     // Draw the outline of the board
     cv::polylines(*frame, approx_board, true, CV_RGB(255, 0, 0), THICKNESS_VALUE);
     // Mark the first corner with a green circle
@@ -269,7 +271,6 @@ std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board,
         }
     }
 
-#if SCRATCH
     // Draw the grid
     for (int i = 0; i < 9; i++)
     {
@@ -285,48 +286,93 @@ std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board,
 
 #else
 
-    // Same but with cv::aruco::GridBoard
-    auto dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME::DICT_4X4_50);
-    auto detectorParams = cv::aruco::DetectorParameters::create();
-
-    cv::aruco::ArucoDetector detector(dictionary, detectorParams);
-    auto board = cv::aruco::GridBoard::create(2, 2, 0.031, 0.1, dictionary);
-
-
-    std::vector<std::array<cv::Point2f, 4>> marker_corners(marker_pairs.size());
-    // get all the corners of the markers
-    std::transform(marker_pairs.begin(), marker_pairs.end(), marker_corners.begin(), [](labeled_marker marker) {
-        return marker.first;
-    });
-
-    // get all of the ids
-    std::vector<int> ids(marker_pairs.size());
-    std::transform(marker_pairs.begin(), marker_pairs.end(), ids.begin(), [](labeled_marker marker) {
-        return marker.second;
-    });
-
-    // detect the markers
-    detector.detectMarkers(frame, marker_corners, ids);
-
-     // Refind strategy to detect more markers
-    if(true)
-    detector.refineDetectedMarkers(frame, board, marker_corners, ids, camMatrix, distCoeffs);
+    // Create the board
+    int markersX = 5; // number of markers in X
+    int markersY = 7; // number of markers in Y
+    float markerLength = 20; // marker length
+    float markerSeparation = 3; // separation between markers
     
-    // Estimate the board pose
-    cv::Mat objPoints, imgPoints;
-    board->matchImagePoints(corners, ids, objPoints, imgPoints);
+    // readCameraParamsFromCommandLine(parser, camMatrix, distCoeffs);
+    aruco::Dictionary dictionary = aruco::getPredefinedDictionary(aruco::DICT_ARUCO_ORIGINAL);
+    aruco::DetectorParameters detectorParams = aruco::DetectorParameters();
+    
+    aruco::ArucoDetector detector(dictionary, detectorParams);
+    
+    float axisLength = 0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
+    markerSeparation);
+    
+    // Create GridBoard object
+    aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
 
-    // Find pose
-    cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
+    std::vector<int> ids;
+    std::vector<std::vector<Point2f>> corners, rejected;    
+    
+    // Detect markers
+    detector.detectMarkers(*frameIn, corners, ids, rejected);
+    std::cout << "Markers detected (id): " << ids.size() << std::endl;
+    
+    // Refind strategy to detect more markers
+    cv::Mat camMatrix = cv::Mat::eye(3, 3, CV_64F);
+    cv::Mat distCoeffs = cv::Mat::zeros(5, 1, CV_64F);
+    detector.refineDetectedMarkers(*frameIn, board, corners, ids, rejected, camMatrix, distCoeffs);
+    // std::cout << "camMatrix: " << camMatrix << std::endl;
+    // std::cout << "distCoeffs: " << distCoeffs << std::endl;
+    // std::cout << std::endl;
+    
+    // Estimate board pose
+    int markersOfBoardDetected = 0;
+    cv::Mat rvec, tvec;
+    if(ids.size() >= 4) {
+        // std::cout << "Board detected" << std::endl;
+        // Get object and image points for the solvePnP function
+        cv::Mat objPoints, imgPoints;
+        // std::vector<cv::Point3f> objPoints;
+        // std::vector<cv::Point2f> imgPoints;
+        board.matchImagePoints(corners, ids, objPoints, imgPoints);
+        std::cout << "corners: " << corners.size() << std::endl;
+        
+        // Find pose of the board from the detected markers
+        // cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+        cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
+        // std::cout << "rvec: " << rvec << std::endl;
+        // std::cout << "tvec: " << tvec << std::endl;
+        // std::cout << std::endl;
+        
+        markersOfBoardDetected = (int)objPoints.total() / 4;
+        // markersOfBoardDetected = (int)objPoints.size() / 4;
+        // std::cout << "Markers of board detected (objPoint): " << markersOfBoardDetected << std::endl;
+        std::cout << std::endl;
+    }
+        
+    // Draw results
+    if(!ids.empty())
+    aruco::drawDetectedMarkers(*frameOut, corners, ids);
+    
+    bool showRejected = false;
+    if(showRejected && !rejected.empty())
+    aruco::drawDetectedMarkers(*frameOut, rejected, noArray(), Scalar(100, 0, 255));
+    
+    if(markersOfBoardDetected > 0)
+    cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
 
-    // Draw the detected markers
-    cv::aruco::drawDetectedMarkers(frame, corners, ids);
+    // // Generate markers for the GridBoard (for printing)
+    // board.generateImage(cv::Size(640, 480), *frameOut, 5, 1);
 
-    // Draw the board
-    cv::aruco::drawAxis(frame, camMatrix, distCoeffs, rvec, tvec, 0.1);
+ // // extract the corners of the markers
+    // std::vector<std::vector<cv::Point2f>> marker_corners;
+    // for (auto marker : marker_pairs)
+    // {
+    //     std::vector<cv::Point2f> corners;
+    //     for (auto corner : marker.first)
+    //     {
+    //         corners.push_back(cv::Point2f(corner.x, corner.y));
+    //     }
+    //     marker_corners.push_back(corners);
+    // }
 
-    // Draw Frame axis
-    cv::drawFrameAxes(frame, camMatrix, distCoeffs, rvec, tvec, 0.1);
+
+
+    std::vector<cv::Point2f> board_grid;
 
 #endif
 
@@ -753,6 +799,10 @@ SharedCamera camera_open(int id)
 {
     if (id < 0)
         id = default_camera;
+
+#if WEBCAM
+    id = 2;
+#endif
 
     std::cout << "Query camera " << id << std::endl;
 
