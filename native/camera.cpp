@@ -5,9 +5,39 @@
 #include <map>
 
 #include "camera.h"
+#include <opencv2/calib3d.hpp>
+#include "chessboard.h"
 
 
 #define WEBCAM 1
+
+void transformImagePointsToObjectPoints(const std::vector<cv::Point2f>& imagePoints,
+                                        const cv::Matx33f& cameraMatrix,
+                                        const cv::Mat& distCoeffs,
+                                        const cv::Mat& rVec,
+                                        const cv::Mat& tVec,
+                                        std::vector<cv::Point3f>& objectPoints) {
+    // Convert rotation vector to rotation matrix
+    cv::Mat R;
+    cv::Rodrigues(rVec, R);
+
+    // Invert the rotation matrix
+    cv::Mat R_inv = R.t();
+
+    // Compute the inverse translation vector
+    cv::Mat tVec_inv = -R_inv * tVec;
+
+    // Undistort image points
+    std::vector<cv::Point2f> undistortedPoints;
+    cv::undistortPoints(imagePoints, undistortedPoints, cameraMatrix, distCoeffs);
+
+    // Transform points from image space to object space
+    for (const auto& pt : undistortedPoints) {
+        cv::Mat pt_homogeneous = (cv::Mat_<double>(3, 1) << pt.x, pt.y, 1.0);
+        cv::Mat objectPoint = R_inv * pt_homogeneous + tVec_inv;
+        objectPoints.emplace_back(objectPoint.at<double>(0), objectPoint.at<double>(1), objectPoint.at<double>(2));
+    }
+}
 
 Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false)
 {
@@ -156,11 +186,13 @@ void Camera::loop()
     }
 }
 
-std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
+ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
 {
 
     // Create detector and dictionary
+
     aruco::Dictionary dictionary = aruco::getPredefinedDictionary(aruco::DICT_4X4_250);
+
     aruco::DetectorParameters detectorParams = aruco::DetectorParameters();
     detectorParams.minDistanceToBorder = 0;
     detectorParams.adaptiveThreshWinSizeStep = 100;
@@ -175,17 +207,77 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
 
     // Length of the axis in the board
-    float axisLength = 0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
-                               markerSeparation);
+    float axisLength =  0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
+                          markerSeparation);
 
     // Detect markers
     std::vector<int> ids;
     std::vector<std::vector<Point2f>> corners, rejected;
     detector.detectMarkers(*frameIn, corners, ids, rejected);
 
+    // filter ids and corners to only keep ids that are part of the board
+    const std::vector<int> custom_ids = { 0, 1, 2, 3, 4, 5 };
+    auto marker_to_piece = [](int id) -> ChessboardPiece {
+        // Marker ids start with 10
+        // White pieces come first
+        // 0 - 7: White pawns
+        // 8 - 15: White pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
+        // 16 - 23: Black pawns
+        // 24 - 31: Black pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
+
+        auto id_without_offset = id - 10;
+        auto color = id_without_offset < 16 ? ChessboardPieceColor::WHITE : ChessboardPieceColor::BLACK;
+
+        auto type = ChessboardPieceType::PAWN;
+        auto type_id = id_without_offset % 16;
+        if (type_id <= 7)
+        {
+            type = ChessboardPieceType::PAWN;
+        }
+        else if (type_id <= 11)
+        {
+            type = ChessboardPieceType::ROOK;
+        }
+        else if (type_id <= 13)
+        {
+            type = ChessboardPieceType::KNIGHT;
+        }
+        else if (type_id <= 15)
+        {
+            type = ChessboardPieceType::BISHOP;
+        }
+        else if (type_id == 16)
+        {
+            type = ChessboardPieceType::QUEEN;
+        }
+        else if (type_id == 17)
+        {
+            type = ChessboardPieceType::KING;
+        }
+
+        return ChessboardPiece(type, color);
+    };
+
+
+    std::vector<int> board_ids, piece_ids;
+    std::vector<std::vector<Point2f>> board_corners, piece_corners;
+    for (size_t i = 0; i < ids.size(); i++)
+    {
+        if (std::find(custom_ids.begin(), custom_ids.end(), ids[i]) != custom_ids.end())
+        {
+            board_ids.push_back(ids[i]);
+            board_corners.push_back(corners[i]);
+        }
+        else
+        {
+            piece_ids.push_back(ids[i]);
+            piece_corners.push_back(corners[i]);
+        }
+    }
+
     // Draw results
     if (!ids.empty())
-        aruco::drawDetectedMarkers(*frameOut, corners, ids);
+        aruco::drawDetectedMarkers(*frameOut, board_corners, board_ids);
     // std::cout << "Markers detected (id): " << ids.size() << std::endl;
 
     // Draw rejected markers
@@ -228,51 +320,75 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
                           0.0f, 0.0f, 1.0f);
     cv::Mat distCoeffs;
     // Refind strategy to detect more markers
-    detector.refineDetectedMarkers(*frameIn, board, corners, ids, rejected, camMatrix, distCoeffs);
-    // std::cout << "camMatrix: " << camMatrix << std::endl;
-    // std::cout << "distCoeffs: " << distCoeffs << std::endl;
-    // std::cout << std::endl;
+    detector.refineDetectedMarkers(*frameIn, board, board_corners, board_ids, rejected, camMatrix, distCoeffs);
+    detector.refineDetectedMarkers(*frameIn, board, piece_corners, piece_ids, rejected, camMatrix, distCoeffs);
 
     // Estimate board pose
     int markersOfBoardDetected = 0;
     cv::Mat rvec, tvec;
-    if (ids.size() >= 4)
+    if (board_ids.size() >= 4)
     {
-        // std::cout << "Board detected" << std::endl;
         // Get object and image points for the solvePnP function
-        // cv::Mat objPoints, imgPoints;
         std::vector<cv::Point3f> objPoints;
         std::vector<cv::Point2f> imgPoints;
-        board.matchImagePoints(corners, ids, objPoints, imgPoints);
-        // std::cout << "corners (num detected marker): " << corners.size() << " ids " << ids.size() << std::endl;
-        // std::cout << "imgPoints (calculated points 2d from corners): " << imgPoints.size() << std::endl;
-        // std::cout << "objPoints (calculated points 3d from ids): " << objPoints.size() << std::endl;
+        board.matchImagePoints(board_corners, board_ids, objPoints, imgPoints);
 
         if (imgPoints.size() >= 4)
         {
             // Find pose of the board from the detected markers
             cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
-            // cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
-            // std::cout << "rvec: " << rvec << std::endl;
-            // std::cout << "tvec: " << tvec << std::endl;
-            // std::cout << std::endl;
-
-            // markersOfBoardDetected = (int)objPoints.total() / 4;
             markersOfBoardDetected = (int)objPoints.size() / 4;
-            // std::cout << "Markers of board detected (objPoint): " << markersOfBoardDetected << std::endl;
+        } else {
+            return {};
         }
+
+    } else {
+        return {};
     }
 
     if (markersOfBoardDetected > 0)
         cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
 
-        // // Generate markers for the GridBoard (for printing)
-        // board.generateImage(cv::Size(640, 480), *frameOut, 5, 1);
 
+    // Transform pieces into objPoints using tVec and rVec
+    std::vector<cv::Point3f> piecePoints;
 
+    // get piece image points as middle of all corners
+    std::vector<cv::Point2f> pieceImgPoints;
+    for (size_t i = 0; i < piece_corners.size(); i++)
+    {
+        cv::Point2f pieceImgPoint = cv::Point2f(0, 0);
+        for (size_t j = 0; j < piece_corners[i].size(); j++)
+        {
+            pieceImgPoint += piece_corners[i][j];
+        }
+        pieceImgPoint = pieceImgPoint / (float) piece_corners[i].size();
+        pieceImgPoints.push_back(pieceImgPoint);
+    }
+    
+    // transform piece image points to object points
+    transformImagePointsToObjectPoints(pieceImgPoints, camMatrix, distCoeffs, rvec, tvec, piecePoints);
+
+    // drop z coordinate for all pieces
     std::vector<cv::Point2f> board_grid;
+    for (size_t i = 0; i < piecePoints.size(); i++)
+    {
+        board_grid.push_back(cv::Point2f(piecePoints[i].x, piecePoints[i].y));
+    }
 
-    return board_grid;
+    // Whole board is length 1, get Point2i for each piece
+    std::vector<std::pair<cv::Point2i, ChessboardPiece>> chessboard_grid;
+    for (size_t i = 0; i < board_grid.size(); i++)
+    {
+        cv::Point2i point = cv::Point2i((int)(board_grid[i].x * 8), (int)(board_grid[i].y * 8));
+        // get id
+        int id = piece_ids[i];
+        // get piece
+        ChessboardPiece piece = marker_to_piece(id);
+        chessboard_grid.push_back(std::make_pair(point, piece));
+    }
+
+    return std::move(chessboard_grid);
 }
 
 static std::map<int, std::weak_ptr<Camera>> cameras;

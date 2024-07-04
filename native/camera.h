@@ -7,7 +7,7 @@ extern "C"
 {
 #endif
 
-#include <stdint.h>
+    #include <stdint.h>
 
     void *camera_create(int camera);
     void camera_delete(void *obj);
@@ -43,18 +43,10 @@ extern "C"
 #include <opencv2/opencv.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 
+#include "chessboard.h"
+
 using namespace cv;
 
-struct StripDimensions {
-    int stripLength;
-    int nStop;
-    int nStart;
-    Point2f stripeVecX;
-    Point2f stripeVecY;
-};
-
-
-using labeled_marker = std::pair<std::array<cv::Point_<float>,4>, int>;
 
 class Camera
 {
@@ -75,13 +67,7 @@ public:
 
 private:
     void loop();
-    void computeThreshold(cv::Mat* frame_src, cv::Mat* frame_dst);
-    std::vector<std::vector<Point>> computeApproxContours(cv::Mat* frame_src, cv::Mat* frame_draw);
-    labeled_marker processContour(std::vector<Point> approx_contour, cv::Mat* frame_draw);
-    void computeStrip(cv::Point* center_point, StripDimensions* strip, cv::Mat* image_pixel_strip);
-    std::array<cv::Point2f, 4> calculateSubpixCorners(float subpix_line_params[16], cv::Mat* frame_draw);
-    int getMarkerID(cv::Mat* frame_src, std::array<cv::Point2f, 4> subpix_corners, bool draw_marker_id);
-
+    
     cv::VideoCapture capture;
     cv::Mat frame, greyscale;
     cv::Mat first_pixel_strip, first_marker;
@@ -102,10 +88,7 @@ private:
 typedef std::shared_ptr<Camera> SharedCamera;
 
 SharedCamera camera_open(int id = -1);
-
-std::array<cv::Point2f,4> find_board_corners(std::vector<labeled_marker> marker);
-// std::vector<cv::Point2f> calculateBoardGrid(std::vector<cv::Point> approx_board, std::vector<labeled_marker> marker_pairs, cv::Mat* frame);
-std::vector<cv::Point2f> calculateBoardGrid(cv::Mat* frameIn, cv::Mat* frameOut);
+ChessboardUpdate calculateBoardGrid(cv::Mat* frameIn, cv::Mat* frameOut);
 
 #endif
 

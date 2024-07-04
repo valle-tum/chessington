@@ -20,6 +20,6 @@ FIND_PACKAGE(OpenCV REQUIRED PATHS /usr/local/include(opencv4)) # added
 INCLUDE_DIRECTORIES(AFTER "${OpenCV_INCLUDE_DIRS}" "include")
 LINK_LIBRARIES(${OpenCV_LIBS})
 
-ADD_LIBRARY(bouncy SHARED camera.cpp processing.cpp wrapper.c)
+ADD_LIBRARY(bouncy SHARED camera.cpp processing.cpp wrapper.c chessboard.cpp)
 
 INCLUDE_DIRECTORIES(${godot_api_SOURCE_DIR})
