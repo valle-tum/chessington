@@ -10,7 +10,7 @@
 #define THICKNESS_VALUE 4
 #define MARKER_ID_UNDEFINED -1
 #define SCRATCH 0
-#define WEBCAM 0
+#define WEBCAM 1
 #define CALIBRATE 1
 
 int subpixSampleSafe(const Mat &pSrc, const Point2f &p)
@@ -204,29 +204,14 @@ void Camera::loop()
                 break;
             }
 
+            this->flip(false, false);
             if (flip_lr || flip_ud)
             {
                 int code = flip_lr ? (flip_ud ? -1 : 1) : 0;
+                code = -1;
                 cv::flip(frame, frame, code);
             }
 
-            // this->computeThreshold(&frame, &greyscale);
-
-            // std::vector<std::vector<cv::Point>> approx_contours = this->computeApproxContours(&greyscale, &frame);
-            // std::vector<labeled_marker> markers;
-            // for (int i = 0; i < approx_contours.size(); i++)
-            // {
-            //     markers.push_back(this->processContour(approx_contours[i], &frame));
-            // }
-
-            // auto board = find_board_corners(markers);
-            // std::vector<Point> approx_board;
-            // for (auto corner : board) {
-            //     // std::cout << corner <<std::endl;
-            //     approx_board.push_back(corner);
-            // }
-
-            // auto board_grid = calculateBoardGrid(approx_board, markers, &frame);
             auto board_grid = calculateBoardGrid(&frame, &frame);
 
             counter++;
@@ -246,7 +231,7 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
 {
 
     // Create detector and dictionary
-    aruco::Dictionary dictionary = aruco::getPredefinedDictionary(aruco::DICT_ARUCO_ORIGINAL);
+    aruco::Dictionary dictionary = aruco::getPredefinedDictionary(aruco::DICT_4X4_250);
     aruco::DetectorParameters detectorParams = aruco::DetectorParameters();
     detectorParams.minDistanceToBorder = 0;
     detectorParams.adaptiveThreshWinSizeStep = 100;
@@ -254,8 +239,8 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     aruco::ArucoDetector detector(dictionary, detectorParams);
 
     // Create GridBoard object
-    int markersX = 3;           // number of markers in X
-    int markersY = 4;           // number of markers in Y
+    int markersX = 5;           // number of markers in X
+    int markersY = 7;           // number of markers in Y
     float markerLength = 20;    // marker length
     float markerSeparation = 3; // separation between markers
     aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
@@ -279,6 +264,7 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     if (showRejected && !rejected.empty())
         aruco::drawDetectedMarkers(*frameOut, rejected, noArray(), Scalar(100, 0, 255));
 
+//     // Calibrate the camera
 //     bool calibrate = true;
 //     if (calibrate)
 //     {
