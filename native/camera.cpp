@@ -9,6 +9,29 @@
 
 #define WEBCAM 1
 
+Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false)
+{
+    capture.open(input);
+    // capture.open("MarkerMovie.MP4");
+
+    if (!capture.isOpened())
+    {
+        std::cout << "No webcam, using video file" << std::endl;
+        capture.open("MarkerMovie.MP4");
+        if (!capture.isOpened())
+        {
+            capture.release();
+            throw std::runtime_error("Unable to open camera");
+        }
+    }
+
+    width = (int)capture.get(CAP_PROP_FRAME_WIDTH);
+    height = (int)capture.get(CAP_PROP_FRAME_HEIGHT);
+
+    std::cout << "Camera ready (" << width << "x" << height << ")" << std::endl;
+
+    worker = std::thread(&Camera::loop, this);
+}
 
 Camera::~Camera()
 {
@@ -145,11 +168,15 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     aruco::ArucoDetector detector(dictionary, detectorParams);
 
     // Create GridBoard object
-    int markersX = 2;           // number of markers in X
-    int markersY = 2;           // number of markers in Y
+    int markersX = 5;           // number of markers in X
+    int markersY = 7;           // number of markers in Y
     float markerLength = 20;    // marker length
     float markerSeparation = 3; // separation between markers
     aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
+
+    // Length of the axis in the board
+    float axisLength = 0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
+                               markerSeparation);
 
     // Detect markers
     std::vector<int> ids;
@@ -166,30 +193,30 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     if (showRejected && !rejected.empty())
         aruco::drawDetectedMarkers(*frameOut, rejected, noArray(), Scalar(100, 0, 255));
 
-        //     // Calibrate the camera
-        //     bool calibrate = true;
-        //     if (calibrate)
-        //     {
-        //         // f[px] = x[px] * z[m] / x[m]
-        //         // get the size of one marker in pixels using the detected corners. Also use an inline if statement to avoid division by zero
-        //         float markerSizePixel = (ids.size() > 0) ? (float)cv::norm(corners[0][0] - corners[0][1]) : 1.0;
-        //         std::cout << "markerSizePixel: " << markerSizePixel << std::endl;
-        //         // float markerSizePixel = 73.0;   // for WEBCAM 0 (Valentin) --> focalLen = 522.83783
-        //         // float markerSizePixel = 97.0;   // for WEBCAM 1 (Valentin) --> focalLen = 694.72974
+//     // Calibrate the camera
+//     bool calibrate = true;
+//     if (calibrate)
+//     {
+//         // f[px] = x[px] * z[m] / x[m]
+//         // get the size of one marker in pixels using the detected corners. Also use an inline if statement to avoid division by zero
+//         float markerSizePixel = (ids.size() > 0) ? (float)cv::norm(corners[0][0] - corners[0][1]) : 1.0;
+//         std::cout << "markerSizePixel: " << markerSizePixel << std::endl;
+//         // float markerSizePixel = 73.0;   // for WEBCAM 0 (Valentin) --> focalLen = 522.83783
+//         // float markerSizePixel = 97.0;   // for WEBCAM 1 (Valentin) --> focalLen = 694.72974
 
-        //         // get the focal length of the camera
-        //         float distance = 0.265; // distance between the camera and the marker
-        //         float markerSizeMeter = 0.037; // size of the markers in meters
-        //         // f[px] = x[px] * z[m] / x[m]
-        //         float focalLen = markerSizePixel * distance / markerSizeMeter;
-        //         // get the x and y size of the frame
-        //         float x = frameIn->cols;
-        //         float y = frameIn->rows;
-        //         cv::Matx33f camMatrix(focalLen, 0.0f, (x - 1) / 2.0f,
-        //                               0.0f, focalLen, (y - 1) / 2.0f,
-        //                               0.0f, 0.0f, 1.0f);
-        //         std::cout << "camMatrix: " << camMatrix << std::endl;
-        // }
+//         // get the focal length of the camera
+//         float distance = 0.265; // distance between the camera and the marker
+//         float markerSizeMeter = 0.037; // size of the markers in meters     
+//         // f[px] = x[px] * z[m] / x[m]
+//         float focalLen = markerSizePixel * distance / markerSizeMeter;
+//         // get the x and y size of the frame
+//         float x = frameIn->cols;
+//         float y = frameIn->rows;
+//         cv::Matx33f camMatrix(focalLen, 0.0f, (x - 1) / 2.0f,
+//                               0.0f, focalLen, (y - 1) / 2.0f,
+//                               0.0f, 0.0f, 1.0f);
+//         std::cout << "camMatrix: " << camMatrix << std::endl;
+// }
 
 #if WEBCAM
     float focalLen = 694.72974;
@@ -225,6 +252,7 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
         {
             // Find pose of the board from the detected markers
             cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+            // cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec);
             // std::cout << "rvec: " << rvec << std::endl;
             // std::cout << "tvec: " << tvec << std::endl;
             // std::cout << std::endl;
@@ -235,21 +263,17 @@ std::vector<cv::Point2f> calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
         }
     }
 
-    // Length of the axis in the board
-    float axisLength = 0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
-                               markerSeparation);
-
     if (markersOfBoardDetected > 0)
         cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
 
-    // // Generate markers for the GridBoard (for printing)
-    // board.generateImage(cv::Size(640, 480), *frameOut, 5, 1);
+        // // Generate markers for the GridBoard (for printing)
+        // board.generateImage(cv::Size(640, 480), *frameOut, 5, 1);
+
 
     std::vector<cv::Point2f> board_grid;
 
     return board_grid;
 }
-
 
 static std::map<int, std::weak_ptr<Camera>> cameras;
 
