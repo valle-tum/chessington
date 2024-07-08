@@ -8,15 +8,18 @@
 #include <opencv2/calib3d.hpp>
 #include "chessboard.h"
 
-
 #define WEBCAM 1
+/* WEBCAM 1 --> portable Webcam (Valentin)
+ *  WEBCAM 0 --> integrated Webcam (Valentin)
+ */
 
-void transformImagePointsToObjectPoints(const std::vector<cv::Point2f>& imagePoints,
-                                        const cv::Matx33f& cameraMatrix,
-                                        const cv::Mat& distCoeffs,
-                                        const cv::Mat& rVec,
-                                        const cv::Mat& tVec,
-                                        std::vector<cv::Point3f>& objectPoints) {
+void transformImagePointsToObjectPoints(const std::vector<cv::Point2f> &imagePoints,
+                                        const cv::Matx33f &cameraMatrix,
+                                        const cv::Mat &distCoeffs,
+                                        const cv::Mat &rVec,
+                                        const cv::Mat &tVec,
+                                        std::vector<cv::Point3f> &objectPoints)
+{
     // Convert rotation vector to rotation matrix
     cv::Mat R;
     cv::Rodrigues(rVec, R);
@@ -32,7 +35,8 @@ void transformImagePointsToObjectPoints(const std::vector<cv::Point2f>& imagePoi
     cv::undistortPoints(imagePoints, undistortedPoints, cameraMatrix, distCoeffs);
 
     // Transform points from image space to object space
-    for (const auto& pt : undistortedPoints) {
+    for (const auto &pt : undistortedPoints)
+    {
         cv::Mat pt_homogeneous = (cv::Mat_<double>(3, 1) << pt.x, pt.y, 1.0);
         cv::Mat objectPoint = R_inv * pt_homogeneous + tVec_inv;
         objectPoints.emplace_back(objectPoint.at<double>(0), objectPoint.at<double>(1), objectPoint.at<double>(2));
@@ -150,6 +154,10 @@ void Camera::setThreshold(int value = 0)
 
 void Camera::loop()
 {
+
+    ChessboardManager manager;
+
+
     while (true)
     {
         auto start = std::chrono::high_resolution_clock::now();
@@ -171,7 +179,7 @@ void Camera::loop()
                 cv::flip(frame, frame, code);
             }
 
-            auto board_grid = calculateBoardGrid(&frame, &frame);
+            auto board_grid = updateChessModel(&frame, &frame, &manager);
 
             counter++;
         }
@@ -186,7 +194,7 @@ void Camera::loop()
     }
 }
 
-ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
+ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, ChessboardManager* manager)
 {
 
     // Create detector and dictionary
@@ -207,8 +215,8 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
 
     // Length of the axis in the board
-    float axisLength =  0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
-                          markerSeparation);
+    float axisLength = 0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
+                               markerSeparation);
 
     // Detect markers
     std::vector<int> ids;
@@ -216,8 +224,9 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     detector.detectMarkers(*frameIn, corners, ids, rejected);
 
     // filter ids and corners to only keep ids that are part of the board
-    const std::vector<int> custom_ids = { 0, 1, 2, 3, 4, 5 };
-    auto marker_to_piece = [](int id) -> ChessboardPiece {
+    const std::vector<int> custom_ids = {0, 1, 2, 3, 4, 5};
+    auto marker_to_piece = [](int id) -> ChessboardPiece
+    {
         // Marker ids start with 10
         // White pieces come first
         // 0 - 7: White pawns
@@ -258,7 +267,6 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
         return ChessboardPiece(type, color);
     };
 
-
     std::vector<int> board_ids, piece_ids;
     std::vector<std::vector<Point2f>> board_corners, piece_corners;
     for (size_t i = 0; i < ids.size(); i++)
@@ -276,8 +284,13 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     }
 
     // Draw results
-    if (!ids.empty())
+    bool showBoard = true;
+    if (!board_ids.empty() && showBoard)
         aruco::drawDetectedMarkers(*frameOut, board_corners, board_ids);
+
+    bool showPieces = false;
+    if (!piece_ids.empty() && showPieces)
+        aruco::drawDetectedMarkers(*frameOut, piece_corners, piece_ids);
     // std::cout << "Markers detected (id): " << ids.size() << std::endl;
 
     // Draw rejected markers
@@ -285,30 +298,30 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     if (showRejected && !rejected.empty())
         aruco::drawDetectedMarkers(*frameOut, rejected, noArray(), Scalar(100, 0, 255));
 
-//     // Calibrate the camera
-//     bool calibrate = true;
-//     if (calibrate)
-//     {
-//         // f[px] = x[px] * z[m] / x[m]
-//         // get the size of one marker in pixels using the detected corners. Also use an inline if statement to avoid division by zero
-//         float markerSizePixel = (ids.size() > 0) ? (float)cv::norm(corners[0][0] - corners[0][1]) : 1.0;
-//         std::cout << "markerSizePixel: " << markerSizePixel << std::endl;
-//         // float markerSizePixel = 73.0;   // for WEBCAM 0 (Valentin) --> focalLen = 522.83783
-//         // float markerSizePixel = 97.0;   // for WEBCAM 1 (Valentin) --> focalLen = 694.72974
+        //     // Calibrate the camera
+        //     bool calibrate = true;
+        //     if (calibrate)
+        //     {
+        //         // f[px] = x[px] * z[m] / x[m]
+        //         // get the size of one marker in pixels using the detected corners. Also use an inline if statement to avoid division by zero
+        //         float markerSizePixel = (ids.size() > 0) ? (float)cv::norm(corners[0][0] - corners[0][1]) : 1.0;
+        //         std::cout << "markerSizePixel: " << markerSizePixel << std::endl;
+        //         // float markerSizePixel = 73.0;   // for WEBCAM 0 (Valentin) --> focalLen = 522.83783
+        //         // float markerSizePixel = 97.0;   // for WEBCAM 1 (Valentin) --> focalLen = 694.72974
 
-//         // get the focal length of the camera
-//         float distance = 0.265; // distance between the camera and the marker
-//         float markerSizeMeter = 0.037; // size of the markers in meters     
-//         // f[px] = x[px] * z[m] / x[m]
-//         float focalLen = markerSizePixel * distance / markerSizeMeter;
-//         // get the x and y size of the frame
-//         float x = frameIn->cols;
-//         float y = frameIn->rows;
-//         cv::Matx33f camMatrix(focalLen, 0.0f, (x - 1) / 2.0f,
-//                               0.0f, focalLen, (y - 1) / 2.0f,
-//                               0.0f, 0.0f, 1.0f);
-//         std::cout << "camMatrix: " << camMatrix << std::endl;
-// }
+        //         // get the focal length of the camera
+        //         float distance = 0.265; // distance between the camera and the marker
+        //         float markerSizeMeter = 0.037; // size of the markers in meters
+        //         // f[px] = x[px] * z[m] / x[m]
+        //         float focalLen = markerSizePixel * distance / markerSizeMeter;
+        //         // get the x and y size of the frame
+        //         float x = frameIn->cols;
+        //         float y = frameIn->rows;
+        //         cv::Matx33f camMatrix(focalLen, 0.0f, (x - 1) / 2.0f,
+        //                               0.0f, focalLen, (y - 1) / 2.0f,
+        //                               0.0f, 0.0f, 1.0f);
+        //         std::cout << "camMatrix: " << camMatrix << std::endl;
+        // }
 
 #if WEBCAM
     float focalLen = 694.72974;
@@ -328,21 +341,44 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
     cv::Mat rvec, tvec;
     if (board_ids.size() >= 4)
     {
+
+        // Test draw arrow
+        // Draw arrow from marker with id 5 to marker with id 3.
+        // ChessboardManager manager;
+        // for (size_t i = 0; i < board_ids.size(); i++)
+        // {
+        //     if (board_ids[i] == 5)
+        //     {
+        //         cv::Point2f from = board_corners[i][1];
+        //         for (size_t j = 0; j < board_ids.size(); j++)
+        //         {
+        //             if (board_ids[j] == 3)
+        //             {
+        //                 cv::Point2f to = board_corners[j][0];
+        //                 manager.illustrate_move(*frameOut, from, to);
+        //             }
+        //         }
+        //     }
+        // }
+
         // Get object and image points for the solvePnP function
         std::vector<cv::Point3f> objPoints;
-        std::vector<cv::Point2f> imgPoints;
-        board.matchImagePoints(board_corners, board_ids, objPoints, imgPoints);
+        std::vector<cv::Point2f> boardImgPoints;
+        board.matchImagePoints(board_corners, board_ids, objPoints, boardImgPoints);
 
-        if (imgPoints.size() >= 4)
+        if (boardImgPoints.size() >= 4)
         {
             // Find pose of the board from the detected markers
-            cv::solvePnP(objPoints, imgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+            cv::solvePnP(objPoints, boardImgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
             markersOfBoardDetected = (int)objPoints.size() / 4;
-        } else {
+        }
+        else
+        {
             return {};
         }
-
-    } else {
+    }
+    else
+    {
         return {};
     }
 
@@ -362,10 +398,10 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
         {
             pieceImgPoint += piece_corners[i][j];
         }
-        pieceImgPoint = pieceImgPoint / (float) piece_corners[i].size();
+        pieceImgPoint = pieceImgPoint / (float)piece_corners[i].size();
         pieceImgPoints.push_back(pieceImgPoint);
     }
-    
+
     // transform piece image points to object points
     transformImagePointsToObjectPoints(pieceImgPoints, camMatrix, distCoeffs, rvec, tvec, piecePoints);
 
@@ -387,6 +423,20 @@ ChessboardUpdate calculateBoardGrid(cv::Mat *frameIn, cv::Mat *frameOut)
         ChessboardPiece piece = marker_to_piece(id);
         chessboard_grid.push_back(std::make_pair(point, piece));
     }
+
+    cv::Mat R;
+    cv::Rodrigues(rvec, R);
+
+    // update the transformation in the ChessboardManager
+    manager->update_transformation(R, tvec);
+
+    if (manager->get_transformation().has_value()) {
+        std::cout << "transformation" << manager->get_transformation().value().first << std::endl;
+    }
+    // update the chessboard grid in the ChessboardManager
+    manager->chessboard.update(chessboard_grid);
+
+    manager->illustrate_move(*frameOut, cv::Point(0,0), cv::Point(0,1));
 
     return std::move(chessboard_grid);
 }
@@ -512,4 +562,3 @@ void camera_set_threshold(void *obj, int value)
     SharedCamera user_data = *((SharedCamera*)obj);
     return user_data->getFirstStripSizeHeight();
 }*/
-

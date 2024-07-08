@@ -88,7 +88,7 @@ private:
 typedef std::shared_ptr<Camera> SharedCamera;
 
 SharedCamera camera_open(int id = -1);
-ChessboardUpdate calculateBoardGrid(cv::Mat* frameIn, cv::Mat* frameOut);
+ChessboardUpdate updateChessModel(cv::Mat* frameIn, cv::Mat* frameOut, ChessboardManager* manager);
 
 #endif
 

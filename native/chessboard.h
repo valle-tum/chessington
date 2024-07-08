@@ -5,12 +5,13 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 #include <map>
+#include <opencv2/imgproc.hpp>
+#include <optional>
 
 using namespace cv;
 
 
 enum ChessboardPieceType {
-    EMPTY = 0,
     PAWN = 1,
     ROOK = 2,
     KNIGHT = 3,
@@ -36,6 +37,7 @@ public:
     ChessboardPieceColor get_color();
 };
 
+
 using ChessboardUpdate = std::vector<std::pair<Point, ChessboardPiece>>;
 
 class Chessboard
@@ -45,10 +47,30 @@ public:
     ~Chessboard();
 
     void update(const ChessboardUpdate& update);
+    
 
 private:
-    Size board_size = Size(2,3);
-    float square_size = 0.025;
-
     std::vector<std::pair<Point, ChessboardPiece>> pieces;
 };
+
+
+class ChessboardManager {
+private:
+    std::optional<std::pair<Mat, Mat>> transformation;
+
+public:
+    Chessboard chessboard;
+
+    ChessboardManager();
+    ~ChessboardManager();
+
+    std::optional<std::pair<Mat, Mat>> get_transformation();
+    void update_transformation(Mat rvec, Mat tvec);
+
+    void move_piece(Mat frame, ChessboardPiece piece, Point to);
+    void move_piece(Mat frame, ChessboardPiece piece, Point from, Point to);
+    void move_piece(Mat frame, Point from, Point to);
+    void illustrate_move(Mat frame, Point from, Point to);
+};
+
+
