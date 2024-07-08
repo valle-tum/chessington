@@ -208,10 +208,10 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     aruco::ArucoDetector detector(dictionary, detectorParams);
 
     // Create GridBoard object
-    int markersX = 5;           // number of markers in X
-    int markersY = 7;           // number of markers in Y
-    float markerLength = 20;    // marker length
-    float markerSeparation = 3; // separation between markers
+    int markersX = 2;           // number of markers in X
+    int markersY = 3;           // number of markers in Y
+    float markerLength = 1.2;    // marker length
+    float markerSeparation = 1; // separation between markers
     aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
 
     // Length of the axis in the board
@@ -224,7 +224,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     detector.detectMarkers(*frameIn, corners, ids, rejected);
 
     // filter ids and corners to only keep ids that are part of the board
-    const std::vector<int> custom_ids = {0, 1, 2, 3, 4, 5};
+    const std::vector<int> custom_ids = {100, 101, 102, 103, 104, 105};
     auto marker_to_piece = [](int id) -> ChessboardPiece
     {
         // Marker ids start with 10
@@ -234,7 +234,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         // 16 - 23: Black pawns
         // 24 - 31: Black pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
 
-        auto id_without_offset = id - 10;
+        auto id_without_offset = id - 0;
         auto color = id_without_offset < 16 ? ChessboardPieceColor::WHITE : ChessboardPieceColor::BLACK;
 
         auto type = ChessboardPieceType::PAWN;
@@ -304,36 +304,39 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     if (showRejected && !rejected.empty())
         aruco::drawDetectedMarkers(*frameOut, rejected, noArray(), Scalar(100, 0, 255));
 
-        //     // Calibrate the camera
-        //     bool calibrate = true;
-        //     if (calibrate)
-        //     {
-        //         // f[px] = x[px] * z[m] / x[m]
-        //         // get the size of one marker in pixels using the detected corners. Also use an inline if statement to avoid division by zero
-        //         float markerSizePixel = (ids.size() > 0) ? (float)cv::norm(corners[0][0] - corners[0][1]) : 1.0;
-        //         std::cout << "markerSizePixel: " << markerSizePixel << std::endl;
-        //         // float markerSizePixel = 73.0;   // for WEBCAM 0 (Valentin) --> focalLen = 522.83783
-        //         // float markerSizePixel = 97.0;   // for WEBCAM 1 (Valentin) --> focalLen = 694.72974
+            // Calibrate the camera
+            bool calibrate = false;
+            if (calibrate)
+            {
+                // f[px] = x[px] * z[m] / x[m]
+                // get the size of one marker in pixels using the detected corners. Also use an inline if statement to avoid division by zero
+                float markerSizePixel = (ids.size() > 0) ? (float)cv::norm(corners[0][0] - corners[0][1]) : 1.0;
+                std::cout << "markerSizePixel: " << markerSizePixel << std::endl;
+                // float markerSizePixel = 73.0;   // for WEBCAM 0 (Valentin) --> focalLen = 522.83783
+                // float markerSizePixel = 97.0;   // for WEBCAM 1 (Valentin) --> focalLen = 694.72974
 
-        //         // get the focal length of the camera
-        //         float distance = 0.265; // distance between the camera and the marker
-        //         float markerSizeMeter = 0.037; // size of the markers in meters
-        //         // f[px] = x[px] * z[m] / x[m]
-        //         float focalLen = markerSizePixel * distance / markerSizeMeter;
-        //         // get the x and y size of the frame
-        //         float x = frameIn->cols;
-        //         float y = frameIn->rows;
-        //         cv::Matx33f camMatrix(focalLen, 0.0f, (x - 1) / 2.0f,
-        //                               0.0f, focalLen, (y - 1) / 2.0f,
-        //                               0.0f, 0.0f, 1.0f);
-        //         std::cout << "camMatrix: " << camMatrix << std::endl;
-        // }
+                // get the focal length of the camera
+                float distance = 0.265; // distance between the camera and the marker
+                float markerSizeMeter = 0.037; // size of the markers in meters
+                // f[px] = x[px] * z[m] / x[m]
+                float focalLen = markerSizePixel * distance / markerSizeMeter;
+                // get the x and y size of the frame
+                float x = frameIn->cols;
+                float y = frameIn->rows;
+                cv::Matx33f camMatrix(focalLen, 0.0f, (x - 1) / 2.0f,
+                                      0.0f, focalLen, (y - 1) / 2.0f,
+                                      0.0f, 0.0f, 1.0f);
+                std::cout << "camMatrix: " << camMatrix << std::endl;
+        }
 
 #if WEBCAM
     float focalLen = 694.72974;
 #else
-    float focalLen = 522.83783;
+    // float focalLen = 522.83783;
+
+    float focalLen = 250;
 #endif
+
     cv::Matx33f camMatrix(focalLen, 0.0f, (frameIn->cols - 1) / 2.0f,
                           0.0f, focalLen, (frameIn->rows - 1) / 2.0f,
                           0.0f, 0.0f, 1.0f);
@@ -368,9 +371,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         return {};
     }
 
-    if (markersOfBoardDetected > 0)
         cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
-
 
     // Transform pieces into objPoints using tVec and rVec
     std::vector<cv::Point3f> piecePoints;
