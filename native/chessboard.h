@@ -57,7 +57,7 @@ private:
 class ChessboardManager {
 private:
     std::optional<std::pair<Mat, Mat>> transformation;
-
+    std::vector<Point3f> boardCorners;
 public:
     Chessboard chessboard;
 
@@ -65,11 +65,11 @@ public:
     ~ChessboardManager();
 
     std::optional<std::pair<Mat, Mat>> get_transformation();
-    void update_transformation(Mat rvec, Mat tvec);
+    std::vector<Point3f> get_boardCorners();
+    void set_boardCorners(std::vector<std::vector<Point2f>> corners);
 
-    void move_piece(Mat frame, ChessboardPiece piece, Point to);
-    void move_piece(Mat frame, ChessboardPiece piece, Point from, Point to);
-    void move_piece(Mat frame, Point from, Point to);
+    void update_transformation(Mat rvec, Mat tvec);
+    
     void illustrate_move(Mat frame, Point from, Point to);
 };
 

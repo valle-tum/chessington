@@ -8,9 +8,9 @@
 #include <opencv2/calib3d.hpp>
 #include "chessboard.h"
 
-#define WEBCAM 1
+#define WEBCAM 0
 /* WEBCAM 1 --> portable Webcam (Valentin)
- *  WEBCAM 0 --> integrated Webcam (Valentin)
+ * WEBCAM 0 --> integrated Webcam (Valentin)
  */
 
 void transformImagePointsToObjectPoints(const std::vector<cv::Point2f> &imagePoints,
@@ -283,6 +283,12 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         }
     }
 
+    // Update the board corners for the ChessboardManager
+    if (board_corners.size() == 6)
+    {
+        manager->set_boardCorners(board_corners);
+    }
+
     // Draw results
     bool showBoard = true;
     if (!board_ids.empty() && showBoard)
@@ -341,26 +347,6 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     cv::Mat rvec, tvec;
     if (board_ids.size() >= 4)
     {
-
-        // Test draw arrow
-        // Draw arrow from marker with id 5 to marker with id 3.
-        // ChessboardManager manager;
-        // for (size_t i = 0; i < board_ids.size(); i++)
-        // {
-        //     if (board_ids[i] == 5)
-        //     {
-        //         cv::Point2f from = board_corners[i][1];
-        //         for (size_t j = 0; j < board_ids.size(); j++)
-        //         {
-        //             if (board_ids[j] == 3)
-        //             {
-        //                 cv::Point2f to = board_corners[j][0];
-        //                 manager.illustrate_move(*frameOut, from, to);
-        //             }
-        //         }
-        //     }
-        // }
-
         // Get object and image points for the solvePnP function
         std::vector<cv::Point3f> objPoints;
         std::vector<cv::Point2f> boardImgPoints;
@@ -436,7 +422,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     // update the chessboard grid in the ChessboardManager
     manager->chessboard.update(chessboard_grid);
 
-    manager->illustrate_move(*frameOut, cv::Point(0,0), cv::Point(0,1));
+    manager->illustrate_move(*frameOut, cv::Point(0,0), cv::Point(8,8));
 
     return std::move(chessboard_grid);
 }
