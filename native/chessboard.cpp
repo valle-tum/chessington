@@ -1,5 +1,13 @@
 #include "chessboard.h"
 
+#include "chess.hpp"
+
+// coordinate systems:
+// - chessboard: 0,0 is the bottom left corner of the chessboard -> x and y are in the range [0, 7]
+// - object: object coordinate system of opencv (3d coordinates) -> x and y are in the range [0, 1] and z is always 0
+// - pixel: pixel coordinate system of opencv -> x and y are in the range [0, frame.cols] and [0, frame.rows]
+// transform defines the transition from object to pixel coordinates
+
 
 // HELPER FUNCTIONS TO TRANSITION BETWEEN ALL COORDINATE SYSTEMS
 // USING OPENCV TYPES
@@ -104,8 +112,9 @@ Chessboard::~Chessboard()
 {
 }
 
-void Chessboard::update(const ChessboardUpdate &update)
+void Chessboard::update(ChessboardUpdate &update)
 {
+  auto has_changed = true;
   for (auto &piece : update)
   {
     // Check if the piece is already on the board
@@ -114,16 +123,116 @@ void Chessboard::update(const ChessboardUpdate &update)
     {
       if (p.first == piece.first)
       {
-        p.second = piece.second;
-        found = true;
-        break;
+        if (p.second.get_type() != piece.second.get_type() || p.second.get_color() != piece.second.get_color())
+        {
+          p.second = piece.second;
+          found = true;
+          has_changed = true;
+          break;
+        }
       }
     }
     if (!found)
     {
       pieces.push_back(piece);
+      has_changed = true;
     }
   }
+
+  if (has_changed)
+  {
+    update_board();
+  }
+}
+
+void Chessboard::update_board()
+{
+  using namespace chess;
+
+  // Create a chess board
+  // e  means empty
+  std::vector<std::vector<char>> board(8, std::vector<char>(8, 'e'));
+
+  // Fill the board with the pieces
+  for (int i = 0; i < pieces.size(); i++)
+  {
+    auto piece = pieces[i];
+    auto coord = piece.first;
+    auto chessPiece = piece.second;
+
+    char pieceChar = 'e';
+    switch (chessPiece.get_type())
+    {
+    case ChessboardPieceType::PAWN:
+      pieceChar = chessPiece.get_color() == ChessboardPieceColor::WHITE ? 'P' : 'p';
+      break;
+    case ChessboardPieceType::ROOK:
+      pieceChar = chessPiece.get_color() == ChessboardPieceColor::WHITE ? 'R' : 'r';
+      break;
+    case ChessboardPieceType::KNIGHT:
+      pieceChar = chessPiece.get_color() == ChessboardPieceColor::WHITE ? 'N' : 'n';
+      break;
+    case ChessboardPieceType::BISHOP:
+      pieceChar = chessPiece.get_color() == ChessboardPieceColor::WHITE ? 'B' : 'b';
+      break;
+    case ChessboardPieceType::QUEEN:
+      pieceChar = chessPiece.get_color() == ChessboardPieceColor::WHITE ? 'Q' : 'q';
+      break;
+    case ChessboardPieceType::KING:
+      pieceChar = chessPiece.get_color() == ChessboardPieceColor::WHITE ? 'K' : 'k';
+      break;
+    }
+
+    board[coord.y][coord.x] = pieceChar;
+  }
+
+  // create a fen string
+  std::string fen = "";
+  for (int i = 0; i < 8; i++)
+  {
+    int empty = 0;
+    for (int j = 0; j < 8; j++)
+    {
+      if (board[i][j] == 'e')
+      {
+        empty++;
+      }
+      else
+      {
+        if (empty > 0)
+        {
+          fen += std::to_string(empty);
+          empty = 0;
+        }
+        fen += board[i][j];
+      }
+    }
+    if (empty > 0)
+    {
+      fen += std::to_string(empty);
+    }
+    if (i < 7)
+    {
+      fen += "/";
+    }
+  }
+
+  // add the turn (always white)
+  fen += " w - - 0 1";
+
+  this->board.setFen(fen);
+
+  // print first 3 valid moves
+  Movelist moves;
+  movegen::legalmoves(moves, this->board);
+
+  std::cout << "Valid moves: " << std::endl;
+  for (int i = 0; i < 3; i++)
+  {
+    std::cout << uci::moveToUci(moves[i]) << std::endl;
+  }
+  std::cout << "Waiting for change..." << std::endl;
+
 }
 
 // ChessboardPiece
@@ -153,7 +262,7 @@ ChessboardManager::ChessboardManager()
 }
 
 ChessboardManager::~ChessboardManager()
-{
+{ 
 }
 
 std::optional<std::pair<Mat, Mat>> ChessboardManager::get_transformation()
@@ -237,9 +346,3 @@ void ChessboardManager::update_transformation(Mat rvec, Mat tvec)
 {
   this->transformation = std::make_pair(rvec, tvec);
 }
-
-// coordinate systems:
-// - chessboard: 0,0 is the top left corner of the chessboard -> x and y are in the range [0, 7]
-// - object: object coordinate system of opencv (3d coordinates) -> x and y are in the range [0, 1] and z is always 0
-// - pixel: pixel coordinate system of opencv -> x and y are in the range [0, frame.cols] and [0, frame.rows]
-// transform defines the transition from object to pixel coordinates

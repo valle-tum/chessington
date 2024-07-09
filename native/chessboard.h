@@ -7,6 +7,7 @@
 #include <map>
 #include <opencv2/imgproc.hpp>
 #include <optional>
+#include "chess.hpp"
 
 using namespace cv;
 
@@ -46,10 +47,13 @@ public:
     Chessboard();
     ~Chessboard();
 
-    void update(const ChessboardUpdate& update);
+    void update(ChessboardUpdate& update);
+
+    void update_board();
     
 
 private:
+    chess::Board board;
     std::vector<std::pair<Point, ChessboardPiece>> pieces;
 };
 
