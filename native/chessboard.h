@@ -49,7 +49,9 @@ public:
 
     void update(ChessboardUpdate& update);
 
-    void update_board();
+    void print_board();
+
+    chess::Move update_board();
     
 
 private:

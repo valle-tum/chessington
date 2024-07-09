@@ -113,7 +113,10 @@ Chessboard::~Chessboard()
 }
 
 void Chessboard::update(ChessboardUpdate &update)
+
 {
+
+  // pieces.clear();
   auto has_changed = true;
   for (auto &piece : update)
   {
@@ -139,15 +142,89 @@ void Chessboard::update(ChessboardUpdate &update)
     }
   }
 
-  if (has_changed)
-  {
-    update_board();
-  }
+//   if (has_changed)
+//   {
+//     update_board();
+//   }
 }
 
-void Chessboard::update_board()
+void Chessboard::print_board()
+{
+
+  std::cout << "Current board: " << std::endl;
+  for (int i = 0; i < 8; i++)
+  {
+    for (int j = 0; j < 8; j++)
+    {
+      bool found = false;
+      for (auto &piece : pieces)
+      {
+        if (piece.first.x == j && piece.first.y == i)
+        {
+          found = true;
+          char pieceChar = 'e';
+          switch (piece.second.get_type())
+          {
+          case ChessboardPieceType::PAWN:
+            pieceChar = piece.second.get_color() == ChessboardPieceColor::WHITE ? 'P' : 'p';
+            break;
+          case ChessboardPieceType::ROOK:
+            pieceChar = piece.second.get_color() == ChessboardPieceColor::WHITE ? 'R' : 'r';
+            break;
+          case ChessboardPieceType::KNIGHT:
+            pieceChar = piece.second.get_color() == ChessboardPieceColor::WHITE ? 'N' : 'n';
+            break;
+          case ChessboardPieceType::BISHOP:
+            pieceChar = piece.second.get_color() == ChessboardPieceColor::WHITE ? 'B' : 'b';
+            break;
+          case ChessboardPieceType::QUEEN:
+            pieceChar = piece.second.get_color() == ChessboardPieceColor::WHITE ? 'Q' : 'q';
+            break;
+          case ChessboardPieceType::KING:
+            pieceChar = piece.second.get_color() == ChessboardPieceColor::WHITE ? 'K' : 'k';
+            break;
+          }
+          std::cout << pieceChar << " ";
+          break;
+        }
+      }
+      if (!found)
+      {
+        std::cout << "e ";
+      }
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+}
+
+chess::Move Chessboard::update_board()
 {
   using namespace chess;
+
+  // check if there are kings for both colors
+  bool whiteKing = false;
+  bool blackKing = false;
+  for (auto &piece : pieces)
+  {
+    if (piece.second.get_type() == ChessboardPieceType::KING)
+    {
+      if (piece.second.get_color() == ChessboardPieceColor::WHITE)
+      {
+        whiteKing = true;
+      }
+      else
+      {
+        blackKing = true;
+      }
+    }
+  }
+
+  if (!whiteKing || !blackKing)
+  {
+    std::cerr << "Both kings must be on the board!" << std::endl;
+    return Move();
+  }
 
   // Create a chess board
   // e  means empty
@@ -183,7 +260,11 @@ void Chessboard::update_board()
       break;
     }
 
+    if (coord.x >= 0 && coord.x < 8 && coord.y >= 0 && coord.y < 8)
+    {
+
     board[coord.y][coord.x] = pieceChar;
+    }
   }
 
   // create a fen string
@@ -226,12 +307,14 @@ void Chessboard::update_board()
   Movelist moves;
   movegen::legalmoves(moves, this->board);
 
-  std::cout << "Valid moves: " << std::endl;
-  for (int i = 0; i < 3; i++)
-  {
-    std::cout << uci::moveToUci(moves[i]) << std::endl;
-  }
-  std::cout << "Waiting for change..." << std::endl;
+  // std::cout << "Valid moves: " << std::endl;
+  // for (int i = 0; i < 3; i++)
+  // {
+  //   std::cout << uci::moveToUci(moves[i]) << std::endl;
+  // }
+  // std::cout << "Waiting for change..." << std::endl;
+  
+  return moves[7];
 
 }
 
