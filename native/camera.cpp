@@ -238,11 +238,20 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     auto marker_to_piece = [](int id) -> ChessboardPiece
     {
         // Marker ids start with 10
-        // White pieces come first
-        // 0 - 7: White pawns
-        // 8 - 15: White pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
-        // 16 - 23: Black pawns
-        // 24 - 31: Black pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
+        
+        // White Rook 8 and 9
+        // White Knight 12 and 13
+        // White Bishop 14 and 15
+        // White Queen 16
+        // White King 17
+        // White Pawn 50 - 57
+
+        // Black Rook 24 and 26
+        // Black Knight 28 and 32
+        // Black Bishop 27 and 29
+        // Black Queen 31
+        // Black King 33
+        // Black Pawn 18 - 23 and 25 and 30
 
 
         // white pawns 50 - 57 und irgendwo nen fehler
@@ -308,7 +317,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     if (!board_ids.empty() && showBoard)
         aruco::drawDetectedMarkers(*frameOut, board_corners, board_ids);
 
-    bool showPieces = false;
+    bool showPieces = true;
     if (!piece_ids.empty() && showPieces)
         aruco::drawDetectedMarkers(*frameOut, piece_corners, piece_ids);
     // std::cout << "Markers detected (id): " << ids.size() << std::endl;
@@ -391,6 +400,9 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     {
         return {};
     }
+
+    return{};
+
     std::cout << "Markers of board detected: " << markersOfBoardDetected << std::endl;
     cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
     
@@ -433,7 +445,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         markerPoints.push_back(cv::Point3f(objectPoint.at<double>(0), objectPoint.at<double>(1), objectPoint.at<double>(2)));
     }
 
-    
+
 
     // drop z coordinate for all pieces
     std::vector<cv::Point2f> board_grid;
