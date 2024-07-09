@@ -39,19 +39,18 @@ void transformImagePointsToObjectPoints(const std::vector<cv::Point2f> &imagePoi
     {
         cv::Mat uvPoint = (cv::Mat_<double>(3, 1) << pt.x, pt.y, 1.0);
 
-            cv::Mat leftSideMat  = R.inv() * cameraMatrix.inv() * uvPoint;
-    cv::Mat rightSideMat = R.inv() * tVec;
+        cv::Mat leftSideMat = R.inv() * cameraMatrix.inv() * uvPoint;
+        cv::Mat rightSideMat = R.inv() * tVec;
 
-    double s = (285 + rightSideMat.at<double>(2,0))/leftSideMat.at<double>(2,0); 
-    //285 represents the height Zconst
+        double s = (285 + rightSideMat.at<double>(2, 0)) / leftSideMat.at<double>(2, 0);
+        // 285 represents the height Zconst
 
-    std::cout << "P = " << R.inv() * (s * cameraMatrix.inv() * uvPoint - tVec) << std::endl;
+        std::cout << "P = " << R.inv() * (s * cameraMatrix.inv() * uvPoint - tVec) << std::endl;
 
         cv::Mat objectPoint = R_inv * uvPoint + tVec_inv;
         objectPoints.emplace_back(objectPoint.at<double>(0), objectPoint.at<double>(1), objectPoint.at<double>(2));
     }
 }
-
 
 Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false)
 {
@@ -217,9 +216,9 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     aruco::ArucoDetector detector(dictionary, detectorParams);
 
     // Create GridBoard object
-    int markersX = 2;           // number of markers in X
-    int markersY = 2;           // number of markers in Y
-    float markerLength = 4;   // marker length
+    int markersX = 2;            // number of markers in X
+    int markersY = 2;            // number of markers in Y
+    float markerLength = 4;      // marker length
     float markerSeparation = 40; // separation between markers
     aruco::GridBoard board(Size(markersX, markersY), markerLength, markerSeparation, dictionary);
 
@@ -234,7 +233,7 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     detector.detectMarkers(*frameIn, corners, ids, rejected);
 
     // filter ids and corners to only keep ids that are part of the board
-    const std::vector<int> custom_ids = { 0, 1, 2, 3}; // {100, 101, 102, 103, 104, 105};
+    const std::vector<int> custom_ids = {0, 1, 2, 3}; // {100, 101, 102, 103, 104, 105};
     auto marker_to_piece = [](int id) -> ChessboardPiece
     {
         // Marker ids start with 10
@@ -243,7 +242,6 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         // 8 - 15: White pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
         // 16 - 23: Black pawns
         // 24 - 31: Black pieces (ROOK, KNIGHT, BISHOP, QUEEN, KING)
-
 
         // white pawns 50 - 57 und irgendwo nen fehler
 
@@ -359,44 +357,99 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
     detector.refineDetectedMarkers(*frameIn, board, board_corners, board_ids, rejected, camMatrix, distCoeffs);
     detector.refineDetectedMarkers(*frameIn, board, piece_corners, piece_ids, rejected, camMatrix, distCoeffs);
 
-    // Estimate board pose
-    int markersOfBoardDetected = 0;
-    cv::Mat rvec, tvec;
-    
-    if (board_ids.size() >= 4)
-    {
-        // Get object and image points for the solvePnP function
-        std::vector<cv::Point3f> objPoints;
-        std::vector<cv::Point2f> boardImgPoints;
-        board.matchImagePoints(board_corners, board_ids, objPoints, boardImgPoints);
-        std::cout << "Board image points: " << boardImgPoints.size() << std::endl;
+    // // Estimate board pose
+    // int markersOfBoardDetected = 0;
+    // cv::Mat rvec, tvec;
 
-        if (boardImgPoints.size() >= 4)
+    // if (board_ids.size() >= 4)
+    // {
+    //     // Get object and image points for the solvePnP function
+    //     std::vector<cv::Point3f> objPoints;
+    //     std::vector<cv::Point2f> boardImgPoints;
+    //     board.matchImagePoints(board_corners, board_ids, objPoints, boardImgPoints);
+    //     std::cout << "Board image points: " << boardImgPoints.size() << std::endl;
+
+    //     if (boardImgPoints.size() >= 4)
+    //     {
+    //         // Find pose of the board from the detected markers
+    //         cv::solvePnP(objPoints, boardImgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+    //         markersOfBoardDetected = (int)objPoints.size() / 4;
+    //     }
+    //     else
+    //     {
+    //         return {};
+    //     }
+    // }
+    // else
+    // {
+    //     return {};
+    // }
+
+    // if (board_ids.size() < 4)
+    // {
+    //     return {};
+    // }
+    // std::cout << "Markers of board detected: " << markersOfBoardDetected << std::endl;
+    // cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
+
+    // Get the center of the board using the board_corners mean
+    cv::Point2f boardCenter = cv::Point2f(0, 0);
+    for (size_t i = 0; i < board_corners.size(); i++)
+    {
+        for (size_t j = 0; j < board_corners[i].size(); j++)
         {
-            // Find pose of the board from the detected markers
-            cv::solvePnP(objPoints, boardImgPoints, camMatrix, distCoeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
-            markersOfBoardDetected = (int)objPoints.size() / 4;
+            boardCenter += board_corners[i][j];
         }
-        else
+    }
+    boardCenter = boardCenter / (float)(board_corners.size() * board_corners[0].size());
+
+    // get the inner most corner of everz board?corners entry
+    std::vector<cv::Point2f> innerCorners;
+    for (size_t i = 0; i < board_corners.size(); i++)
+    {
+        cv::Point2f innerCorner = board_corners[i][0];
+        for (size_t j = 1; j < board_corners[i].size(); j++)
         {
-            return {};
+            if (cv::norm(innerCorner - boardCenter) > cv::norm(board_corners[i][j] - boardCenter))
+            {
+                innerCorner = board_corners[i][j];
+            }
+        }
+        innerCorners.push_back(innerCorner);
+    }
+
+    // order by board_ids
+    // board_ids contains numbers from 0 to 3
+    std::vector<cv::Point2f> orderedCorners;
+    for (size_t i = 0; i < board_ids.size(); i++)
+    {
+        for (size_t j = 0; j < board_corners.size(); j++)
+        {
+            if (board_ids[i] == j)
+            {
+                orderedCorners.push_back(innerCorners[j]);
+            }
         }
     }
-    else
-    {
-        return {};
-    }
 
-    if (board_ids.size() < 4)
-    {
-        return {};
-    }
-    std::cout << "Markers of board detected: " << markersOfBoardDetected << std::endl;
-    cv::drawFrameAxes(*frameOut, camMatrix, distCoeffs, rvec, tvec, axisLength);
-    
+    // base white
+    // from 0 to 1
+    // base black
+    // from 2 to 3
 
-    // Transform pieces into objPoints using tVec and rVec
-    std::vector<cv::Point3f> piecePoints;
+    // left side from 1 to 3
+    // right side from 0 to 2
+
+    cv::Point2f baseWhite = orderedCorners[1] - orderedCorners[0];
+    cv::Point2f baseBlack = orderedCorners[2] - orderedCorners[3];
+    cv::Point2f leftSide = orderedCorners[3] - orderedCorners[1];
+    cv::Point2f rightSide = orderedCorners[2] - orderedCorners[0];
+
+    // draw the inner corners
+    for (size_t i = 0; i < innerCorners.size(); i++)
+    {
+        cv::circle(*frameOut, innerCorners[i], 5, cv::Scalar(0, 255, 0), 2);
+    }
 
     // get piece image points as middle of all corners
     std::vector<cv::Point2f> pieceImgPoints;
@@ -411,6 +464,58 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         pieceImgPoints.push_back(pieceImgPoint);
     }
 
+    // draw the piece image points
+    for (size_t i = 0; i < pieceImgPoints.size(); i++)
+    {
+        cv::circle(*frameOut, pieceImgPoints[i], 5, cv::Scalar(0, 0, 255), 2);
+    }
+
+    // BW is the base white vector
+    // BB is the base black vector
+    // BW and BB are the opposite sides of the board and are pointing in the same direction
+    // LS is the left side vector
+    // RS is the right side vector
+    // LS and RS are the opposite sides of the board and are pointing in the same direction
+
+    // These edges represent a skewed chess board
+    // The board is not a perfect square (eg has no parrallel size)
+
+    // first of we want to find all intersection points in a 2d grid
+    // we can do this by finding the intersection of the lines of the board
+    // by subdividing each of the edges into 8 parts we can find 64 intersection points
+
+    std::vector<std::vector<cv::Point2f>> intersectionPoints;
+    for (size_t i = 0; i < 8; i++)
+    {
+        std::vector<cv::Point2f> row;
+        for (size_t j = 0; j < 8; j++)
+        {
+            cv::Point2f intersectionPoint = cv::Point2f(0, 0);
+            // calculate the intersection point of the two lines
+            // the first line is the line from the left side to the right side
+            // the second line is the line from the base white to the base black
+            // the intersection point is the point where the two lines intersect
+            // the intersection point is calculated by the following formula
+            // intersectionPoint = leftSide + (rightSide - leftSide) * i / 8 + baseWhite + (baseBlack - baseWhite) * j / 8
+            intersectionPoint = leftSide + (rightSide - leftSide) * i / 8 + baseWhite + (baseBlack - baseWhite) * j / 8;
+            row.push_back(intersectionPoint);
+        }
+        intersectionPoints.push_back(row);
+    }
+
+    // draw the intersection points
+    for (size_t i = 0; i < intersectionPoints.size(); i++)
+    {
+        for (size_t j = 0; j < intersectionPoints[i].size(); j++)
+        {
+            cv::circle(*frameOut, intersectionPoints[i][j], 5, cv::Scalar(255, 0, 0), 2);
+        }
+    }
+
+    return {};
+
+    // Transform pieces into objPoints using tVec and rVec
+    std::vector<cv::Point3f> piecePoints;
 
     // transform image points to object points
     Mat R;
@@ -425,15 +530,13 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         piecePoints.push_back(cv::Point3f(objectPoint.at<double>(0), objectPoint.at<double>(1), objectPoint.at<double>(2)));
     }
 
-
     std::vector<cv::Point3f> markerPoints;
-    for (size_t i = 0; i < board_corners.size(); i++) {
+    for (size_t i = 0; i < board_corners.size(); i++)
+    {
         cv::Mat uvPoint = (cv::Mat_<double>(3, 1) << board_corners[i][0].x, board_corners[i][0].y, 1.0);
         cv::Mat objectPoint = R_inv * uvPoint + tVec_inv;
         markerPoints.push_back(cv::Point3f(objectPoint.at<double>(0), objectPoint.at<double>(1), objectPoint.at<double>(2)));
     }
-
-    
 
     // drop z coordinate for all pieces
     std::vector<cv::Point2f> board_grid;
@@ -449,13 +552,11 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
 
         // also draw the object points as text
         if (i < piecePoints.size())
-        std::cout << "Piece " << i << ": " << piecePoints[i] << std::endl;
+            std::cout << "Piece " << i << ": " << piecePoints[i] << std::endl;
         std::string text = std::to_string((int)piecePoints[i].x) + ", " + std::to_string((int)piecePoints[i].y);
         cv::putText(*frameOut, text, pieceImgPoints[i], cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
         std::cout << "Piece " << i << ": " << text << std::endl;
-
     }
-
 
     // Whole board is length 1, get Point2i for each piece
     std::vector<std::pair<cv::Point2i, ChessboardPiece>> chessboard_grid;
@@ -468,8 +569,6 @@ ChessboardUpdate updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, Chessboar
         ChessboardPiece piece = marker_to_piece(id);
         chessboard_grid.push_back(std::make_pair(point, piece));
     }
-
-    
 
     return {};
 
