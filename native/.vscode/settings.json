@@ -66,6 +66,8 @@
         "shared_mutex": "cpp",
         "cfenv": "cpp",
         "cinttypes": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "bitset": "cpp",
+        "charconv": "cpp"
     }
 }

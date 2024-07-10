@@ -8,7 +8,6 @@
 // - pixel: pixel coordinate system of opencv -> x and y are in the range [0, frame.cols] and [0, frame.rows]
 // transform defines the transition from object to pixel coordinates
 
-
 // HELPER FUNCTIONS TO TRANSITION BETWEEN ALL COORDINATE SYSTEMS
 // USING OPENCV TYPES
 
@@ -21,7 +20,7 @@ ObjectCoordinate chessboardToObject(ChessboardCoordinate chessCoord, std::vector
 {
   float spanX = abs(boardCorners[1].x - boardCorners[0].x);
   float spanY = abs(boardCorners[3].y - boardCorners[0].y);
-  std::cout << "SpanX: " << spanX << std::endl; 
+  std::cout << "SpanX: " << spanX << std::endl;
   std::cout << "SpanY: " << spanY << std::endl;
   return ObjectCoordinate(boardCorners[0].x + chessCoord.x * spanX, boardCorners[0].y + chessCoord.y * spanY, 0);
 }
@@ -117,35 +116,67 @@ void Chessboard::update(ChessboardUpdate &update)
 {
 
   // pieces.clear();
-  auto has_changed = true;
-  for (auto &piece : update)
+  // auto has_changed = true;
+  // for (auto &piece : update)
+  // {
+  //   // Check if the piece is already on the board
+  //   bool found = false;
+  //   for (auto &p : pieces)
+  //   {
+  //     if (p.first == piece.first)
+  //     {
+  //       if (p.second.get_type() != piece.second.get_type() || p.second.get_color() != piece.second.get_color())
+  //       {
+  //         p.second = piece.second;
+  //         found = true;
+  //         has_changed = true;
+  //         break;
+  //       }
+  //     }
+  //   }
+  //   if (!found)
+  //   {
+  //     pieces.push_back(piece);
+  //     has_changed = true;
+  //   }
+  // }
+
+  // add the current state of the board to the history
+    piecesMean.push_back(update);
+  // delete the oldest state if the history is too long
+  int numFrames = 10;
+  if (piecesMean.size() > numFrames)
   {
-    // Check if the piece is already on the board
-    bool found = false;
-    for (auto &p : pieces)
+    piecesMean.erase(piecesMean.begin());
+  }
+  // asign the current state of the board based on the history
+  // if one piece was detected more than 5 times for the same position it is considered as the correct position
+  // if the position of a piece was not detected for 5 times it is removed from the board
+  if (piecesMean.size() == numFrames)
+  {
+    std::map<cv::Point, std::map<ChessboardPiece, int, ChessboardPieceComparator>, PointComparator> pieceCounter;
+    for (auto &state : piecesMean)
     {
-      if (p.first == piece.first)
+      for (auto &piece : state)
       {
-        if (p.second.get_type() != piece.second.get_type() || p.second.get_color() != piece.second.get_color())
+        pieceCounter[piece.first][piece.second]++;
+      }
+    }
+    pieces.clear();
+//  ChessboardUpdate = std::vector<std::pair<Point, ChessboardPiece>>;
+    
+    for (auto &piece : pieceCounter)
+    {
+      for (auto &p : piece.second)
+      {
+        if (p.second > (int)(numFrames / 2))
         {
-          p.second = piece.second;
-          found = true;
-          has_changed = true;
-          break;
+          pieces.push_back(std::make_pair(piece.first, p.first));
         }
       }
     }
-    if (!found)
-    {
-      pieces.push_back(piece);
-      has_changed = true;
-    }
   }
-
-//   if (has_changed)
-//   {
-//     update_board();
-//   }
+  
 }
 
 void Chessboard::print_board()
@@ -202,7 +233,7 @@ chess::Move Chessboard::update_board()
 {
   using namespace chess;
 
-  // check if there are kings for both colors, without the library to calculate legal moves will crash 
+  // check if there are kings for both colors, without the library to calculate legal moves will crash
   bool whiteKing = false;
   bool blackKing = false;
   for (auto &piece : pieces)
@@ -227,7 +258,7 @@ chess::Move Chessboard::update_board()
   }
 
   // Create a chess board
-  // e  means empty field 
+  // e  means empty field
   std::vector<std::vector<char>> board(8, std::vector<char>(8, 'e'));
 
   // Fill the board with the pieces
@@ -263,11 +294,11 @@ chess::Move Chessboard::update_board()
     if (coord.x >= 0 && coord.x < 8 && coord.y >= 0 && coord.y < 8)
     {
 
-    board[coord.y][coord.x] = pieceChar;
+      board[coord.y][coord.x] = pieceChar;
     }
   }
 
-  // create a fen string, its a special way to describe a chees board 
+  // create a fen string, its a special way to describe a chees board
   std::string fen = "";
   for (int i = 0; i < 8; i++)
   {
@@ -313,9 +344,8 @@ chess::Move Chessboard::update_board()
   //   std::cout << uci::moveToUci(moves[i]) << std::endl;
   // }
   // std::cout << "Waiting for change..." << std::endl;
-  
-  return moves[7];
 
+  return moves[7];
 }
 
 // ChessboardPiece
@@ -328,12 +358,12 @@ ChessboardPiece::~ChessboardPiece()
 {
 }
 
-ChessboardPieceType ChessboardPiece::get_type()
+ChessboardPieceType ChessboardPiece::get_type() const
 {
   return type;
 }
 
-ChessboardPieceColor ChessboardPiece::get_color()
+ChessboardPieceColor ChessboardPiece::get_color() const
 {
   return color;
 }
@@ -345,7 +375,7 @@ ChessboardManager::ChessboardManager()
 }
 
 ChessboardManager::~ChessboardManager()
-{ 
+{
 }
 
 std::optional<std::pair<Mat, Mat>> ChessboardManager::get_transformation()
@@ -385,7 +415,6 @@ void ChessboardManager::set_boardCorners(std::vector<std::vector<Point2f>> corne
 
   std::cout << "edgeMarker3d: " << edgeMarker3d[0] << std::endl;
 
-
   // find center of the chessboard
   Point3f center(0, 0, 0);
   for (auto marker : edgeMarker3d)
@@ -398,9 +427,6 @@ void ChessboardManager::set_boardCorners(std::vector<std::vector<Point2f>> corne
   center /= (int)(edgeMarker3d.size() * 4);
   std::cout << "center: " << center << std::endl;
 
-
-
-  
   // find the the corner which is the closest to the center for each marker
   std::vector<Point3f> sortedCorners;
   for (auto marker : edgeMarker3d)

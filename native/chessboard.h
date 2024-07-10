@@ -34,8 +34,8 @@ public:
     ChessboardPiece(ChessboardPieceType type, ChessboardPieceColor color);
     ~ChessboardPiece();
 
-    ChessboardPieceType get_type();
-    ChessboardPieceColor get_color();
+    ChessboardPieceType get_type() const;
+    ChessboardPieceColor get_color() const;
 };
 
 
@@ -57,8 +57,23 @@ public:
 private:
     chess::Board board;
     std::vector<std::pair<Point, ChessboardPiece>> pieces;
+    std::vector<std::vector<std::pair<Point, ChessboardPiece>>> piecesMean;
 };
 
+struct PointComparator {
+    bool operator() (const cv::Point& a, const cv::Point& b) const {
+        if (a.x == b.x) return a.y < b.y;
+        return a.x < b.x;
+    }
+};
+
+struct ChessboardPieceComparator {
+    bool operator() (const ChessboardPiece& a, const ChessboardPiece& b) const {
+        // Assuming ChessboardPiece has methods get_type() and get_color() for comparison
+        if (a.get_type() == b.get_type()) return a.get_color() < b.get_color();
+        return a.get_type() < b.get_type();
+    }
+};
 
 class ChessboardManager {
 private:

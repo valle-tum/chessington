@@ -13,8 +13,6 @@
  * WEBCAM 0 --> integrated Webcam (Valentin)
  */
 
-
-
 Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false)
 {
     capture.open(input);
@@ -122,7 +120,7 @@ void Camera::loop()
 {
 
     ChessboardManager manager;
-    std::optional<std::pair<cv::Point2f, cv::Point2f>>  move;
+    std::optional<std::pair<cv::Point2f, cv::Point2f>> move;
     while (true)
     {
         auto start = std::chrono::high_resolution_clock::now();
@@ -152,10 +150,11 @@ void Camera::loop()
             {
                 move = new_move;
             }
-            if (move.has_value()) {
-                cv::arrowedLine(frame, move.value().first, move.value().second, cv::Scalar(0, 0, 255), 8);
+            if (move.has_value())
+            {
+                cv::arrowedLine(frame, move.value().first, move.value().second, cv::Scalar(0, 0, 255), 5);
             }
-             
+
             counter++;
         }
 
@@ -169,7 +168,7 @@ void Camera::loop()
     }
 }
 
-std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, ChessboardManager *manager)
+std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, ChessboardManager *manager)
 {
 
     // Create detector and dictionary
@@ -384,7 +383,6 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
     {
         auto id = board_ids[i];
         orderedCorners[id] = (innerCorners[i]);
-
     }
 
     // Vector along the white side of the board
@@ -415,13 +413,13 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
         pieceImgPoints.push_back(pieceImgPoint);
     }
 
-    // draw the piece image points
-    for (size_t i = 0; i < pieceImgPoints.size(); i++)
-    {
-        cv::circle(*frameOut, pieceImgPoints[i], 5, cv::Scalar(0, 0, 255), 2);
-    }
+    // // draw the piece image points
+    // for (size_t i = 0; i < pieceImgPoints.size(); i++)
+    // {
+    //     cv::circle(*frameOut, pieceImgPoints[i], 5, cv::Scalar(0, 0, 255), 2);
+    // }
 
-    // draw the board as well as the intersection points/middle points of each field. Disabled in final dispay of assistant 
+    // draw the board as well as the intersection points/middle points of each field. Disabled in final dispay of assistant
     auto drawIntersectionPoints = false;
     std::vector<std::vector<cv::Point2f>> intersectionPoints;
     for (size_t i = 0; i < 8; i++)
@@ -443,8 +441,8 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
             // draw the lines
             if (drawIntersectionPoints)
             {
-            cv::line(*frameOut, firstBW, firstBB, cv::Scalar(255, 0, 0), 2);
-            cv::line(*frameOut, secondLeft, secondRight, cv::Scalar(255, 0, 0), 2);
+                cv::line(*frameOut, firstBW, firstBB, cv::Scalar(255, 0, 0), 2);
+                cv::line(*frameOut, secondLeft, secondRight, cv::Scalar(255, 0, 0), 2);
             }
 
             // intersection of the two lines
@@ -466,7 +464,8 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
     }
 
     // draw the intersection points
-    if (drawIntersectionPoints) {
+    if (drawIntersectionPoints)
+    {
         for (size_t i = 0; i < intersectionPoints.size(); i++)
         {
             for (size_t j = 0; j < intersectionPoints[i].size(); j++)
@@ -506,12 +505,11 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
     // print the chessboard
     manager->chessboard.print_board();
 
-
     // if not 2 kings detetcted the chess.hpp will crash therfore try catch
-    try {
+    try
+    {
         auto move = manager->chessboard.update_board();
 
-        
         auto from = move.from();
         auto to = move.to();
 
@@ -523,13 +521,11 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
 
         std::cout << "Move from " << from_i << ", " << from_j << " to " << to_i << ", " << to_j << std::endl;
 
-      
         return std::make_pair(intersectionPoints[from_j][7 - from_i], intersectionPoints[to_j][7 - to_i]);
-
-    
-    } catch (...) {
+    }
+    catch (...)
+    {
         std::cerr << "Failed to interface with chess.hpp" << std::endl;
-
     }
 
     // manager->illustrate_move(*frameOut, cv::Point(0, 0), cv::Point(8, 8));
