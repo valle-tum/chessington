@@ -202,7 +202,7 @@ chess::Move Chessboard::update_board()
 {
   using namespace chess;
 
-  // check if there are kings for both colors
+  // check if there are kings for both colors, without the library to calculate legal moves will crash 
   bool whiteKing = false;
   bool blackKing = false;
   for (auto &piece : pieces)
@@ -227,7 +227,7 @@ chess::Move Chessboard::update_board()
   }
 
   // Create a chess board
-  // e  means empty
+  // e  means empty field 
   std::vector<std::vector<char>> board(8, std::vector<char>(8, 'e'));
 
   // Fill the board with the pieces
@@ -267,7 +267,7 @@ chess::Move Chessboard::update_board()
     }
   }
 
-  // create a fen string
+  // create a fen string, its a special way to describe a chees board 
   std::string fen = "";
   for (int i = 0; i < 8; i++)
   {

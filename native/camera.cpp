@@ -309,7 +309,7 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
     if (showRejected && !rejected.empty())
         aruco::drawDetectedMarkers(*frameOut, rejected, noArray(), Scalar(100, 0, 255));
 
-    // Calibrate the camera
+    // Calibrate the camera, getting the right focal length as our camera is 115° and has a higher distortion
     bool calibrate = false;
     if (calibrate)
     {
@@ -421,7 +421,7 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
         cv::circle(*frameOut, pieceImgPoints[i], 5, cv::Scalar(0, 0, 255), 2);
     }
 
-    // draw the board
+    // draw the board as well as the intersection points/middle points of each field. Disabled in final dispay of assistant 
     auto drawIntersectionPoints = false;
     std::vector<std::vector<cv::Point2f>> intersectionPoints;
     for (size_t i = 0; i < 8; i++)
@@ -476,7 +476,7 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
         }
     }
 
-    // update the chessboard grid
+    // update the chessboard grid with detected pices on the board
     ChessboardUpdate chessboard_update;
     for (size_t i = 0; i < pieceImgPoints.size(); i++)
     {
@@ -506,6 +506,8 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>>  updateChessModel(cv::Mat *fr
     // print the chessboard
     manager->chessboard.print_board();
 
+
+    // if not 2 kings detetcted the chess.hpp will crash therfore try catch
     try {
         auto move = manager->chessboard.update_board();
 
