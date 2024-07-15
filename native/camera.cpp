@@ -362,7 +362,7 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     }
     boardCenter = boardCenter / (float)(board_corners.size());
 
-    // get the inner most corner of everz board?corners entry
+    // get the inner most corner of every board corners entry
     std::vector<cv::Point2f> innerCorners;
     for (size_t i = 0; i < board_corners.size(); i++)
     {
@@ -471,6 +471,7 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
             for (size_t j = 0; j < intersectionPoints[i].size(); j++)
             {
                 cv::circle(*frameOut, intersectionPoints[i][j], 5, cv::Scalar(255, 0, 0), 2);
+                cv::putText(*frameOut, std::to_string(i) + ", " + std::to_string(j), intersectionPoints[i][j], cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2);
             }
         }
     }
@@ -481,7 +482,8 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     {
         cv::Point2f pieceImgPoint = pieceImgPoints[i];
         cv::Point2f closestIntersectionPoint = intersectionPoints[0][0];
-        size_t best_j, best_k;
+        size_t best_j = 0;
+        size_t best_k = 0;
         for (size_t j = 0; j < intersectionPoints.size(); j++)
         {
             for (size_t k = 0; k < intersectionPoints[j].size(); k++)
@@ -519,7 +521,7 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
         int to_i = to.rank();
         int to_j = to.file();
 
-        std::cout << "Move from " << from_i << ", " << from_j << " to " << to_i << ", " << to_j << std::endl;
+        std::cout << "Move from " << from_j << ", " << 7-from_i << " to " << to_j << ", " << 7-to_i << std::endl;
 
         return std::make_pair(intersectionPoints[from_j][7 - from_i], intersectionPoints[to_j][7 - to_i]);
     }
@@ -528,9 +530,6 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
         std::cerr << "Failed to interface with chess.hpp" << std::endl;
     }
 
-    // manager->illustrate_move(*frameOut, cv::Point(0, 0), cv::Point(8, 8));
-
-    // return std::move(chessboard_grid);
     return {};
 }
 
