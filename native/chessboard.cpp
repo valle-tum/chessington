@@ -1,7 +1,13 @@
+
 #include "chessboard.h"
-
 #include "chess.hpp"
+#include "httplib.h"
+#include "nlohmann/json.hpp"
 
+std::string apiKey = "678035a1c2mshd447467226dc590p1afa71jsn5f0f21fdad45";
+std::string apiHost = "chess-stockfish-16-api.p.rapidapi.com";
+
+using Json = nlohmann::json;
 
 // Chessboard
 
@@ -36,20 +42,19 @@ void Chessboard::update(ChessboardUpdate &update)
       }
     }
     // clear the current state of the board
-    pieces.clear();    
+    pieces.clear();
     // add the pieces which were detected more than 5 times
     for (auto &piece : pieceCounter)
     {
       for (auto &p : piece.second)
       {
-        if (p.second > (int)(numFrames / 2) - 1)
+        if (p.second > (int)3)
         {
           pieces.push_back(std::make_pair(piece.first, p.first));
         }
       }
     }
   }
-  
 }
 
 void Chessboard::print_board()
@@ -102,7 +107,7 @@ void Chessboard::print_board()
   std::cout << std::endl;
 }
 
-chess::Move Chessboard::update_board()
+std::string Chessboard::update_board()
 {
   using namespace chess;
 
@@ -127,7 +132,7 @@ chess::Move Chessboard::update_board()
   if (!whiteKing || !blackKing)
   {
     std::cerr << "Both kings must be on the board!" << std::endl;
-    return Move();
+    return "";
   }
 
   // Create a chess board
@@ -202,22 +207,42 @@ chess::Move Chessboard::update_board()
     }
   }
 
-  // add the turn (always white)
-  fen += " w - - 0 1";
+  // // add the turn (always white)
+  // fen += " w - - 0 1";
 
-  this->board.setFen(fen);
+  // this->board.setFen(fen);
 
-  // print first 3 valid moves
-  Movelist moves;
-  movegen::legalmoves(moves, this->board);
+  // // print first 3 valid moves
+  // Movelist moves;
+  // movegen::legalmoves(moves, this->board);
 
-  // std::cout << "Valid moves: " << std::endl;
-  // for (int i = 7; i < 8; i++)
-  // {
-  //   std::cout << uci::moveToUci(moves[i]) << std::endl;
-  // }
+  // // std::cout << "Valid moves: " << std::endl;
+  // // for (int i = 7; i < 8; i++)
+  // // {
+  // //   std::cout << uci::moveToUci(moves[i]) << std::endl;
+  // // }
 
-  return moves[7];
+  // return moves[7];
+
+  // return "";
+
+  try
+  {
+    // Call the API to get the best move
+    this->counterFrames++;
+    if (this->counterFrames == 100)
+    {
+      RuedigerDestroyerOfWorlds ruediger;
+      this->bestMove = ruediger.getBestMove(fen);
+      this->counterFrames = 0;
+    }
+    return this->bestMove;
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "getbestMove()> Error: " << e.what() << std::endl;
+    return "";
+  }
 }
 
 // ChessboardPiece
@@ -258,4 +283,49 @@ std::optional<std::pair<Mat, Mat>> ChessboardManager::get_transformation()
 std::vector<Point3f> ChessboardManager::get_boardCorners()
 {
   return boardCorners;
+}
+
+// RuedigerDestroyerOfWorlds
+
+RuedigerDestroyerOfWorlds::RuedigerDestroyerOfWorlds()
+{
+}
+
+RuedigerDestroyerOfWorlds::~RuedigerDestroyerOfWorlds()
+{
+}
+
+std::future<std::string> RuedigerDestroyerOfWorlds::getBestMoveAsync(const std::string &fen)
+{
+  return std::async(std::launch::async, &RuedigerDestroyerOfWorlds::getBestMove, this, fen);
+}
+
+// Helper function to execute a shell command
+std::string exec(const char *cmd)
+{
+  std::array<char, 128> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+  if (!pipe)
+  {
+    throw std::runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+  {
+    result += buffer.data();
+  }
+  std::cout << "Result: " << result << std::endl;
+  return result;
+}
+
+std::string RuedigerDestroyerOfWorlds::getBestMove(const std::string &fen)
+{
+  std::string command = "python3 native/chess_request.py " + fen;
+  std::cout << "Command: " << command.c_str() << std::endl;
+  std::string output = exec(command.c_str());
+
+  // Parse the JSON output from the Python script
+  auto json = nlohmann::json::parse(output);
+  std::string best_move = json["bestmove"];
+  return best_move;
 }

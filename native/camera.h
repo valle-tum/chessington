@@ -79,6 +79,7 @@ private:
     bool flip_lr, flip_ud;
     bool is_first_strip = true, is_first_marker = true;
     std::array<cv::Point,4> board_corners;
+    int counterFrames;
 
     std::recursive_mutex guard;
     std::thread worker;

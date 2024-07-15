@@ -68,6 +68,15 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "bitset": "cpp",
-        "charconv": "cpp"
+        "charconv": "cpp",
+        "any": "cpp",
+        "codecvt": "cpp",
+        "forward_list": "cpp",
+        "future": "cpp",
+        "ranges": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp",
+        "csignal": "cpp",
+        "regex": "cpp"
     }
 }

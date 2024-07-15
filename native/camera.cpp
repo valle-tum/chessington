@@ -1,4 +1,4 @@
-﻿
+﻿#pragma once
 #include <iostream>
 #include <stdexcept>
 #include <chrono>
@@ -168,6 +168,29 @@ void Camera::loop()
     }
 }
 
+std::pair<std::pair<int, int>, std::pair<int, int>> convertChessMove(const std::string &move)
+{
+    // Ensure the move string is valid
+    if (move.length() != 4)
+    {
+        std::cerr << "Invalid move format." << std::endl;
+        return {{0, 7}, {0, 7}}; // Return an invalid move
+    }
+
+    // Convert 'from' column (a-h) to j-coordinate (0-7)
+    int from_j = move[0] - 'a';
+    // Convert 'from' row (1-8) to i-coordinate (0-7) and invert
+    int from_i = (move[1] - '0') -1;
+
+    // Convert 'to' column (a-h) to j-coordinate (0-7)
+    int to_j = move[2] - 'a';
+    // Convert 'to' row (1-8) to i-coordinate (0-7) and invert
+    int to_i = (move[3] - '0') -1;
+
+    // Return the converted move
+    return {{from_j, from_i}, {to_j, to_i}};
+}
+
 std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, ChessboardManager *manager)
 {
 
@@ -295,11 +318,11 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     }
 
     // Draw results
-    bool showBoard = false;
+    bool showBoard = true;
     if (!board_ids.empty() && showBoard)
         aruco::drawDetectedMarkers(*frameOut, board_corners, board_ids);
 
-    bool showPieces = false;
+    bool showPieces = true;
     if (!piece_ids.empty() && showPieces)
         aruco::drawDetectedMarkers(*frameOut, piece_corners, piece_ids);
 
@@ -502,28 +525,28 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
         chessboard_update.push_back(std::make_pair(cv::Point(best_j, best_k), id));
     }
 
-    // update the chessboard
-    manager->chessboard.update(chessboard_update);
-    // print the chessboard
-    manager->chessboard.print_board();
-
+    try
+    {
+        // update the chessboard
+        manager->chessboard.update(chessboard_update);
+        // print the chessboard
+        manager->chessboard.print_board();
+    }
+    catch (...)
+    {
+        std::cerr << "Failed to update chessboard" << std::endl;
+    }
     // if not 2 kings detetcted the chess.hpp will crash therfore try catch
     try
     {
         auto move = manager->chessboard.update_board();
 
-        auto from = move.from();
-        auto to = move.to();
+        // get the from and to position of the move
+        auto [from, to] = convertChessMove(move);
 
-        int from_i = from.rank();
-        int from_j = from.file();
+        std::cout << "Move from " << from.first << ", " << 7 - from.second << " to " << to.first << ", " << 7 - to.second << std::endl;
 
-        int to_i = to.rank();
-        int to_j = to.file();
-
-        std::cout << "Move from " << from_j << ", " << 7-from_i << " to " << to_j << ", " << 7-to_i << std::endl;
-
-        return std::make_pair(intersectionPoints[from_j][7 - from_i], intersectionPoints[to_j][7 - to_i]);
+        return std::make_pair(intersectionPoints[from.first][7 - from.second], intersectionPoints[to.first][7 - to.second]);
     }
     catch (...)
     {
