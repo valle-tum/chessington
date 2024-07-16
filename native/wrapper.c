@@ -23,12 +23,12 @@ godot_variant _camera_get_image_pixelstrip(godot_object* p_instance, void* p_met
 godot_variant _camera_get_width(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_flip(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_get_height(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
+godot_variant _camera_get_counterFrame(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_open(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_set_default(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_detect_face(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_compute_flow(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_set_threshold(godot_object* p_instance, void* p_method_data, void* p_user_data, int p_num_args, godot_variant** p_args);
-// godot_variant _camera_counterFrames(godot_object* p_instance, void* p_method_data, void* p_user_data, int p_num_args, godot_variant** p_args);
 
 
 void GDN_EXPORT godot_gdnative_init(godot_gdnative_init_options *p_options) {
@@ -83,6 +83,10 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
 	get_height.method = &_camera_get_height;
 	nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "get_height", attributes, get_height);
 
+	godot_instance_method get_counterFrame = { NULL, NULL, NULL };
+	get_counterFrame.method = &_camera_get_counterFrame;
+	nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "get_counterFrame", attributes, get_counterFrame);
+
     godot_instance_method set_default = { NULL, NULL, NULL };
 	set_default.method = &_camera_set_default;
 	nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "set_default", attributes, set_default);
@@ -102,10 +106,6 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
     godot_instance_method set_threshold = { NULL, NULL, NULL };
     set_threshold.method = &_camera_set_threshold;
     nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "set_threshold", attributes, set_threshold);
-    
-    // godot_instance_method counterFrames = { NULL, NULL, NULL };
-    // counterFrames.method = &_camera_counterFrames;
-    // nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "set_counterFrames", attributes, set_threshold);
 
 printf("Loading resources \n");
 
@@ -238,6 +238,15 @@ godot_variant _camera_get_height(godot_object *p_instance, void *p_method_data, 
 	return res;
 }
 
+godot_variant _camera_get_counterFrame(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
+
+    godot_variant res;
+	camera_data_struct * user_data = (camera_data_struct *) p_user_data;
+
+    api->godot_variant_new_int(&res, camera_get_counterFrame(user_data->camera));
+	return res;
+}
+
 godot_variant _camera_flip(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args) {
 
     godot_variant res;
@@ -330,21 +339,3 @@ godot_variant _camera_set_threshold(godot_object* p_instance, void* p_method_dat
     return res;
 }
 
-
-// godot_variant _camera_counterFrames(godot_object* p_instance, void* p_method_data, void* p_user_data, int p_num_args, godot_variant** p_args) {
-
-//     godot_variant res;
-//     camera_data_struct* user_data = (camera_data_struct*)p_user_data;
-
-//     int value = 0;
-
-//     if (p_num_args > 0) {
-//         value = api->godot_variant_as_int(p_args[0]);
-//     }
-
-//     camera_counterFrames(user_data->camera, value);
-
-//     api->godot_variant_new_bool(&res, GODOT_TRUE);
-
-//     return res;
-// }

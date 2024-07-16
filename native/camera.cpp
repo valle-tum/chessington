@@ -1,4 +1,4 @@
-﻿#pragma once
+﻿// #pragma once
 #include <iostream>
 #include <stdexcept>
 #include <chrono>
@@ -13,7 +13,7 @@
  * WEBCAM 0 --> integrated Webcam (Valentin)
  */
 
-Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false)
+Camera::Camera(int input) : fps(30), flip_lr(false), flip_ud(false), counterFrames(0)
 {
     capture.open(input);
     // capture.open("MarkerMovie.MP4");
@@ -103,6 +103,11 @@ int Camera::getHeight()
     return height;
 }
 
+int Camera::getCounterFrame()
+{
+    return counterFrames;
+}
+
 int Camera::flip(bool flip_lr, bool flip_ud)
 {
     this->flip_lr = flip_lr;
@@ -143,7 +148,8 @@ void Camera::loop()
             }
 
             // Update the chess model
-            auto new_move = updateChessModel(&frame, &frame, &manager);
+            auto new_move = updateChessModel(&frame, &frame, &manager, &this->counterFrames);
+            // counterFrames++;
 
             // Only update the move if it is not empty
             if (new_move.has_value())
@@ -180,18 +186,18 @@ std::pair<std::pair<int, int>, std::pair<int, int>> convertChessMove(const std::
     // Convert 'from' column (a-h) to j-coordinate (0-7)
     int from_j = move[0] - 'a';
     // Convert 'from' row (1-8) to i-coordinate (0-7) and invert
-    int from_i = (move[1] - '0') -1;
+    int from_i = (move[1] - '0') - 1;
 
     // Convert 'to' column (a-h) to j-coordinate (0-7)
     int to_j = move[2] - 'a';
     // Convert 'to' row (1-8) to i-coordinate (0-7) and invert
-    int to_i = (move[3] - '0') -1;
+    int to_i = (move[3] - '0') - 1;
 
     // Return the converted move
     return {{from_j, from_i}, {to_j, to_i}};
 }
 
-std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, ChessboardManager *manager)
+std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *frameIn, cv::Mat *frameOut, ChessboardManager *manager, int *counterFrames)
 {
 
     // Create detector and dictionary
@@ -536,21 +542,31 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     {
         std::cerr << "Failed to update chessboard" << std::endl;
     }
+
     // if not 2 kings detetcted the chess.hpp will crash therfore try catch
     try
     {
-        auto move = manager->chessboard.update_board();
+        // Add to counterFrames
+        (*counterFrames)++;
+        if (*counterFrames % 300 == 0)
+        {
+            // reset counterFrames
+            *counterFrames = 0;
 
-        // get the from and to position of the move
-        auto [from, to] = convertChessMove(move);
+            // get the move
+            auto move = manager->chessboard.update_board();
 
-        std::cout << "Move from " << from.first << ", " << 7 - from.second << " to " << to.first << ", " << 7 - to.second << std::endl;
+            // get the from and to position of the move
+            auto [from, to] = convertChessMove(move);
 
-        return std::make_pair(intersectionPoints[from.first][7 - from.second], intersectionPoints[to.first][7 - to.second]);
+            std::cout << "Move from " << from.first << ", " << 7 - from.second << " to " << to.first << ", " << 7 - to.second << std::endl;
+
+            return std::make_pair(intersectionPoints[from.first][7 - from.second], intersectionPoints[to.first][7 - to.second]);
+        }
     }
     catch (...)
     {
-        std::cerr << "Failed to interface with chess.hpp" << std::endl;
+        std::cerr << "Failed to interface with stockfish" << std::endl;
     }
 
     return {};
@@ -653,6 +669,13 @@ int camera_get_height(void *obj)
     SharedCamera user_data = *((SharedCamera *)obj);
 
     return user_data->getHeight();
+}
+
+int camera_get_counterFrame(void *obj)
+{
+    SharedCamera user_data = *((SharedCamera *)obj);
+
+    return user_data->getCounterFrame();
 }
 
 void camera_set_default(int id)

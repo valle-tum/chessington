@@ -15,6 +15,8 @@ extern "C"
     int camera_get_image(void *obj, uint8_t *buffer, unsigned long *newer, int display_option);
     int camera_get_width(void *obj);
     int camera_get_height(void *obj);
+    
+    int camera_get_counterFrame(void *obj);
 
     void camera_flip(void *obj, int flip_lr, int flip_ud);
 
@@ -60,10 +62,11 @@ public:
     int getWidth();
     int getHeight();
 
+    int getCounterFrame();
+
     int flip(bool flip_lr = true, bool flip_ud = false);
 
     void setThreshold(int value);
-
 
 private:
     void loop();
@@ -89,7 +92,7 @@ private:
 typedef std::shared_ptr<Camera> SharedCamera;
 
 SharedCamera camera_open(int id = -1);
-std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat* frameIn, cv::Mat* frameOut, ChessboardManager* manager);
+std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat* frameIn, cv::Mat* frameOut, ChessboardManager* manager, int* counterFrames);
 
 #endif
 

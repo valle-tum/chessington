@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=15 format=2]
 
 [ext_resource path="res://scripts/Gameplay.gd" type="Script" id=1]
 [ext_resource path="res://scripts/Camera.gd" type="Script" id=2]
@@ -6,6 +6,7 @@
 [ext_resource path="res://wall.tscn" type="PackedScene" id=4]
 [ext_resource path="res://player.tscn" type="PackedScene" id=5]
 [ext_resource path="res://scripts/ItemList.gd" type="Script" id=6]
+[ext_resource path="res://7b5eb74b9ad0faa13de36271d226d854.png" type="Texture" id=7]
 
 [sub_resource type="Environment" id=1]
 background_mode = 4
@@ -183,24 +184,17 @@ margin_bottom = 54.0
 auto_height = true
 script = ExtResource( 6 )
 
-[node name="Panel" type="Panel" parent="."]
-visible = false
-margin_right = 297.0
-margin_bottom = 26.0
-
-[node name="HSlider" type="HSlider" parent="Panel"]
-margin_left = 74.0
-margin_top = 4.0
-margin_right = 289.0
-margin_bottom = 20.0
-max_value = 255.0
-
-[node name="Label" type="Label" parent="Panel"]
-margin_left = 6.0
-margin_top = 5.0
-margin_right = 69.0
-margin_bottom = 19.0
-text = "Threshold"
+[node name="TextureProgress" type="TextureProgress" parent="."]
+margin_left = 749.0
+margin_top = 158.0
+margin_right = 1249.0
+margin_bottom = 658.0
+rect_scale = Vector2( 0.3, 0.3 )
+max_value = 300.0
+value = 100.0
+texture_progress = ExtResource( 7 )
+fill_mode = 4
+radial_initial_angle = 101.6
 
 [connection signal="camera_frame" from="." to="camera" method="_on_root_camera_frame"]
 [connection signal="camera_ready" from="." to="camera" method="_on_root_camera_ready"]
@@ -208,4 +202,3 @@ text = "Threshold"
 [connection signal="game_start" from="." to="shadow" method="_on_root_game_start"]
 [connection signal="game_start" from="." to="game/player" method="_on_root_game_start"]
 [connection signal="item_selected" from="ItemList" to="." method="_on_ItemList_item_selected_ImageDisplay"]
-[connection signal="value_changed" from="Panel/HSlider" to="." method="_on_HSlider_threshold_value_changed"]

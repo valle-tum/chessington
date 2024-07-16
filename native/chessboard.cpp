@@ -229,13 +229,9 @@ std::string Chessboard::update_board()
   try
   {
     // Call the API to get the best move
-    this->counterFrames++;
-    if (this->counterFrames == 100)
-    {
-      RuedigerDestroyerOfWorlds ruediger;
-      this->bestMove = ruediger.getBestMove(fen);
-      this->counterFrames = 0;
-    }
+    RuedigerDestroyerOfWorlds ruediger;
+    this->bestMove = ruediger.getBestMove(fen);
+
     return this->bestMove;
   }
   catch (const std::exception &e)

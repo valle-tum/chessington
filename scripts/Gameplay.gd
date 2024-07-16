@@ -32,9 +32,6 @@ func _ready():
 	
 	emit_signal("camera_ready", camera_size);
 
-	#player = get_node("/root/root/game/player");
-
-	#$animation.play("greeting_blink");
 
 func _process(delta):
 	var buffer = camera.get_image(display_option);
@@ -47,18 +44,9 @@ func _process(delta):
 	image.create_from_data(texture_size, texture_size, false, Image.FORMAT_RGB8, buffer);
 	emit_signal("camera_frame", image)
 	
-	#if !active:
-	#	var face = camera.detect_face()
-	#	if face and not active:
-	#		var position = face.position + face.size / 2;
-	#		if (position - size / 2).length() < 40:
-	#			active = true
-	#			emit_signal("game_start", position)
-	#			$animation.play("game_start")
-	#else:
-	#	var region = Rect2(player.get("position"), Vector2(70, 70))
-	#	var force = camera.compute_flow(region)
-	#	emit_signal("force", Vector2(clamp(force.x, -100, 100), clamp(force.y, -100, 100)))
+#	print(camera.get_counterFrame())
+	$TextureProgress.value = camera.get_counterFrame()
+	
 
 func _on_HSlider_threshold_value_changed(value):
 	print("threshold: ", value)
@@ -67,3 +55,7 @@ func _on_HSlider_threshold_value_changed(value):
 func _on_ItemList_item_selected_ImageDisplay(option):
 	print("output image option: ", option);
 	display_option = option;
+
+
+func _on_ProgressBar_gui_input(event):
+	pass # Replace with function body.
