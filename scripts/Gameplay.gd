@@ -1,11 +1,7 @@
 extends Node
 
 const DISPLAY_IMG_RBG = 0;
-const DISPLAY_IMG_GREY = 1;
-const DISPLAY_IMG_PIXELSTRIP = 2;
-const DISPLAY_MARKER = 3;
 
-#var size = Vector2(640, 480);
 
 onready var camera = preload("res://camera.gdns").new()
 
@@ -26,6 +22,7 @@ func _ready():
 #	camera.set_default(0);
 	camera.open();
 	camera.flip(true, false);
+#	camera.set_resolution(Vector2(1920, 1080))
 	camera_size = Vector2(camera.get_width(), camera.get_height());
 	texture_size = max(camera_size.x, camera_size.y);
 	print("texture size: ", texture_size);

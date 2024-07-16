@@ -26,6 +26,8 @@ extern "C"
 
     void camera_set_threshold(void* obj, int value);
 
+    void camera_set_resolution(void* obj, int width, int height);
+
     static const int DISPLAY_OPTION_RBG = 0,
         DISPLAY_OPTION_GREYSCALE = 1,
         DISPLAY_OPTION_PIXELSTRIP = 2,
@@ -67,6 +69,8 @@ public:
     int flip(bool flip_lr = true, bool flip_ud = false);
 
     void setThreshold(int value);
+
+    void setResolution(int width, int height);
 
 private:
     void loop();

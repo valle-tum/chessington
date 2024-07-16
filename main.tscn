@@ -1,12 +1,11 @@
-[gd_scene load_steps=15 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://scripts/Gameplay.gd" type="Script" id=1]
 [ext_resource path="res://scripts/Camera.gd" type="Script" id=2]
 [ext_resource path="res://scripts/Shadow.gd" type="Script" id=3]
-[ext_resource path="res://wall.tscn" type="PackedScene" id=4]
-[ext_resource path="res://player.tscn" type="PackedScene" id=5]
+[ext_resource path="res://background.jpeg" type="Texture" id=4]
 [ext_resource path="res://scripts/ItemList.gd" type="Script" id=6]
-[ext_resource path="res://7b5eb74b9ad0faa13de36271d226d854.png" type="Texture" id=7]
+[ext_resource path="res://ProgressRing.png" type="Texture" id=7]
 
 [sub_resource type="Environment" id=1]
 background_mode = 4
@@ -17,80 +16,6 @@ colors = PoolColorArray( 0, 0, 0, 0.780392, 0, 0, 0, 0.913725 )
 [sub_resource type="GradientTexture" id=3]
 gradient = SubResource( 2 )
 width = 128
-
-[sub_resource type="CanvasItemMaterial" id=4]
-
-[sub_resource type="RectangleShape2D" id=5]
-extents = Vector2( 0.5, 0.5 )
-
-[sub_resource type="Animation" id=6]
-resource_name = "game_start"
-length = 5.0
-tracks/0/type = "value"
-tracks/0/path = NodePath("shadow:modulate")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/keys = {
-"times": PoolRealArray( 0, 4 ),
-"transitions": PoolRealArray( 1, 1 ),
-"update": 0,
-"values": [ Color( 1, 1, 1, 0 ), Color( 1, 1, 1, 1 ) ]
-}
-tracks/1/type = "value"
-tracks/1/path = NodePath("game/obstacles:modulate")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/keys = {
-"times": PoolRealArray( 0, 0.5, 2.2 ),
-"transitions": PoolRealArray( 1, 1, 1 ),
-"update": 0,
-"values": [ Color( 1, 1, 1, 0 ), Color( 1, 1, 1, 0 ), Color( 1, 1, 1, 1 ) ]
-}
-tracks/2/type = "value"
-tracks/2/path = NodePath("game/greeting:modulate")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/keys = {
-"times": PoolRealArray( 0, 0.5 ),
-"transitions": PoolRealArray( 1, 1 ),
-"update": 0,
-"values": [ Color( 1, 1, 1, 1 ), Color( 1, 1, 1, 0 ) ]
-}
-
-[sub_resource type="Animation" id=7]
-resource_name = "greeting_blink"
-length = 4.0
-loop = true
-tracks/0/type = "value"
-tracks/0/path = NodePath("game/greeting/Label:custom_colors/font_color")
-tracks/0/interp = 2
-tracks/0/loop_wrap = true
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/keys = {
-"times": PoolRealArray( 0, 2, 3.9 ),
-"transitions": PoolRealArray( 1, 1, 1 ),
-"update": 0,
-"values": [ Color( 1, 0, 0, 1 ), Color( 0.4, 0.4, 0.4, 1 ), Color( 1, 0, 0, 1 ) ]
-}
-tracks/1/type = "value"
-tracks/1/path = NodePath("game/greeting/activate:color")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/keys = {
-"times": PoolRealArray( 0, 2, 3.9 ),
-"transitions": PoolRealArray( 1, 1, 1 ),
-"update": 0,
-"values": [ Color( 0.517647, 0.0745098, 0.0745098, 1 ), Color( 0.376471, 0.376471, 0.376471, 1 ), Color( 0.517647, 0.0745098, 0.0745098, 1 ) ]
-}
 
 [node name="root" type="Node2D"]
 script = ExtResource( 1 )
@@ -112,69 +37,6 @@ scale = Vector2( 4.36585, 669.43 )
 texture = SubResource( 3 )
 script = ExtResource( 3 )
 
-[node name="game" type="Node2D" parent="."]
-visible = false
-
-[node name="obstacles" type="Node2D" parent="game"]
-modulate = Color( 1, 1, 1, 0 )
-
-[node name="walls" type="StaticBody2D" parent="game/obstacles"]
-
-[node name="left" type="CollisionShape2D" parent="game/obstacles/walls"]
-material = SubResource( 4 )
-position = Vector2( -25, 240 )
-scale = Vector2( 50, 580 )
-shape = SubResource( 5 )
-
-[node name="right" type="CollisionShape2D" parent="game/obstacles/walls"]
-position = Vector2( 665, 240 )
-scale = Vector2( 50, 580 )
-shape = SubResource( 5 )
-
-[node name="top" type="CollisionShape2D" parent="game/obstacles/walls"]
-position = Vector2( 320, -25 )
-scale = Vector2( 740, 50 )
-shape = SubResource( 5 )
-
-[node name="bottom" type="CollisionShape2D" parent="game/obstacles/walls"]
-position = Vector2( 320, 505 )
-scale = Vector2( 740, 50 )
-shape = SubResource( 5 )
-
-[node name="box1" parent="game/obstacles" instance=ExtResource( 4 )]
-position = Vector2( 200, 240 )
-scale = Vector2( 4.32, 4.6 )
-
-[node name="box2" parent="game/obstacles" instance=ExtResource( 4 )]
-position = Vector2( 429.587, 241.227 )
-scale = Vector2( 4.32, 4.6 )
-
-[node name="player" parent="game" instance=ExtResource( 5 )]
-
-[node name="greeting" type="Node2D" parent="game"]
-visible = false
-
-[node name="Label" type="Label" parent="game/greeting"]
-margin_left = -21.1647
-margin_top = 81.3666
-margin_right = 520.835
-margin_bottom = 169.367
-rect_scale = Vector2( 1.26726, 1.26726 )
-custom_colors/font_color = Color( 0.774305, 0.150464, 0.150464, 1 )
-text = "Place your head in rectangle to start the game"
-align = 1
-
-[node name="activate" type="Polygon2D" parent="game/greeting"]
-position = Vector2( 320, 240 )
-color = Color( 0.464542, 0.188095, 0.188095, 1 )
-invert_enable = true
-invert_border = 10.0
-polygon = PoolVector2Array( -60, -60, 60, -60, 60, 60, -60, 60 )
-
-[node name="animation" type="AnimationPlayer" parent="."]
-anims/game_start = SubResource( 6 )
-anims/greeting_blink = SubResource( 7 )
-
 [node name="ItemList" type="ItemList" parent="."]
 visible = false
 margin_left = 301.0
@@ -184,21 +46,35 @@ margin_bottom = 54.0
 auto_height = true
 script = ExtResource( 6 )
 
+[node name="Background" type="Sprite" parent="."]
+position = Vector2( 839, 281 )
+scale = Vector2( 0.35, 0.35 )
+texture = ExtResource( 4 )
+
 [node name="TextureProgress" type="TextureProgress" parent="."]
-margin_left = 749.0
-margin_top = 158.0
-margin_right = 1249.0
-margin_bottom = 658.0
-rect_scale = Vector2( 0.3, 0.3 )
-max_value = 300.0
+margin_left = 776.0
+margin_top = 407.0
+margin_right = 1276.0
+margin_bottom = 907.0
+rect_scale = Vector2( 0.1, 0.1 )
+max_value = 200.0
 value = 100.0
 texture_progress = ExtResource( 7 )
 fill_mode = 4
 radial_initial_angle = 101.6
 
+[node name="Label" type="Label" parent="TextureProgress"]
+visible = false
+margin_right = 503.0
+margin_bottom = 130.0
+custom_colors/font_color = Color( 1, 1, 1, 1 )
+custom_colors/font_outline_modulate = Color( 1, 1, 1, 1 )
+custom_colors/font_color_shadow = Color( 1, 1, 1, 1 )
+text = "Waiting for Fishstock"
+align = 1
+valign = 1
+
 [connection signal="camera_frame" from="." to="camera" method="_on_root_camera_frame"]
 [connection signal="camera_ready" from="." to="camera" method="_on_root_camera_ready"]
-[connection signal="force" from="." to="game/player" method="_on_root_force"]
 [connection signal="game_start" from="." to="shadow" method="_on_root_game_start"]
-[connection signal="game_start" from="." to="game/player" method="_on_root_game_start"]
 [connection signal="item_selected" from="ItemList" to="." method="_on_ItemList_item_selected_ImageDisplay"]

@@ -8,7 +8,7 @@
 #include <opencv2/calib3d.hpp>
 #include "chessboard.h"
 
-#define WEBCAM 1
+#define WEBCAM 0
 /* WEBCAM 1 --> portable Webcam (Valentin)
  * WEBCAM 0 --> integrated Webcam (Valentin)
  */
@@ -121,6 +121,17 @@ void Camera::setThreshold(int value = 0)
     this->threshold = value;
 }
 
+void Camera::setResolution(int width, int height)
+{
+    std::lock_guard<std::recursive_mutex> lock(guard);
+
+    capture.set(CAP_PROP_FRAME_WIDTH, width);
+    capture.set(CAP_PROP_FRAME_HEIGHT, height);
+
+    this->width = width;
+    this->height = height;
+}
+
 void Camera::loop()
 {
 
@@ -204,7 +215,8 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     aruco::Dictionary dictionary = aruco::getPredefinedDictionary(aruco::DICT_4X4_250);
     aruco::DetectorParameters detectorParams = aruco::DetectorParameters();
     detectorParams.minDistanceToBorder = 0;
-    detectorParams.adaptiveThreshWinSizeStep = 100;
+    detectorParams.adaptiveThreshWinSizeStep = 10;
+    detectorParams.adaptiveThreshConstant = 1;
     aruco::ArucoDetector detector(dictionary, detectorParams);
 
     // Create GridBoard object
@@ -324,11 +336,11 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     }
 
     // Draw results
-    bool showBoard = true;
+    bool showBoard = false;
     if (!board_ids.empty() && showBoard)
         aruco::drawDetectedMarkers(*frameOut, board_corners, board_ids);
 
-    bool showPieces = true;
+    bool showPieces = false;
     if (!piece_ids.empty() && showPieces)
         aruco::drawDetectedMarkers(*frameOut, piece_corners, piece_ids);
 
@@ -442,11 +454,11 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
         pieceImgPoints.push_back(pieceImgPoint);
     }
 
-    // // draw the piece image points
-    // for (size_t i = 0; i < pieceImgPoints.size(); i++)
-    // {
-    //     cv::circle(*frameOut, pieceImgPoints[i], 5, cv::Scalar(0, 0, 255), 2);
-    // }
+    // draw the piece image points
+    for (size_t i = 0; i < pieceImgPoints.size(); i++)
+    {
+        cv::circle(*frameOut, pieceImgPoints[i], 2, cv::Scalar(255, 0, 0), 2);
+    }
 
     // draw the board as well as the intersection points/middle points of each field. Disabled in final dispay of assistant
     auto drawIntersectionPoints = false;
@@ -535,8 +547,6 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     {
         // update the chessboard
         manager->chessboard.update(chessboard_update);
-        // print the chessboard
-        manager->chessboard.print_board();
     }
     catch (...)
     {
@@ -548,10 +558,13 @@ std::optional<std::pair<cv::Point2f, cv::Point2f>> updateChessModel(cv::Mat *fra
     {
         // Add to counterFrames
         (*counterFrames)++;
-        if (*counterFrames % 300 == 0)
+        if (*counterFrames % 200 == 0)
         {
             // reset counterFrames
             *counterFrames = 0;
+
+            // print the chessboard
+            manager->chessboard.print_board();
 
             // get the move
             auto move = manager->chessboard.update_board();
@@ -693,6 +706,12 @@ void camera_set_threshold(void *obj, int value)
 {
     SharedCamera user_data = *((SharedCamera *)obj);
     user_data->setThreshold(value);
+}
+
+void camera_set_resolution(void *obj, int width, int height)
+{
+    SharedCamera user_data = *((SharedCamera *)obj);
+    user_data->setResolution(width, height);
 }
 
 /*int camera_get_first_strip_height(void* obj)

@@ -29,6 +29,7 @@ godot_variant _camera_set_default(godot_object *p_instance, void *p_method_data,
 godot_variant _camera_detect_face(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_compute_flow(godot_object *p_instance, void *p_method_data, void *p_user_data, int p_num_args, godot_variant **p_args);
 godot_variant _camera_set_threshold(godot_object* p_instance, void* p_method_data, void* p_user_data, int p_num_args, godot_variant** p_args);
+godot_variant _camera_set_resolution(godot_object* p_instance, void* p_method_data, void* p_user_data, int p_num_args, godot_variant** p_args);
 
 
 void GDN_EXPORT godot_gdnative_init(godot_gdnative_init_options *p_options) {
@@ -106,6 +107,10 @@ void GDN_EXPORT godot_nativescript_init(void *p_handle) {
     godot_instance_method set_threshold = { NULL, NULL, NULL };
     set_threshold.method = &_camera_set_threshold;
     nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "set_threshold", attributes, set_threshold);
+
+    godot_instance_method set_resolution = { NULL, NULL, NULL };
+    set_resolution.method = &_camera_set_resolution;
+    nativescript_api->godot_nativescript_register_method(p_handle, "Camera", "set_resolution", attributes, set_resolution);
 
 printf("Loading resources \n");
 
@@ -339,3 +344,24 @@ godot_variant _camera_set_threshold(godot_object* p_instance, void* p_method_dat
     return res;
 }
 
+godot_variant _camera_set_resolution(godot_object* p_instance, void* p_method_data, void* p_user_data, int p_num_args, godot_variant** p_args) {
+
+    godot_variant res;
+    camera_data_struct* user_data = (camera_data_struct*)p_user_data;
+
+    int width = 0, height = 0;
+
+    if (p_num_args > 0) {
+        width = api->godot_variant_as_int(p_args[0]);
+    }
+
+    if (p_num_args > 1) {
+        height = api->godot_variant_as_int(p_args[1]);
+    }
+
+    camera_set_resolution(user_data->camera, width, height);
+
+    api->godot_variant_new_bool(&res, GODOT_TRUE);
+
+    return res;
+}

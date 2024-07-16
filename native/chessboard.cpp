@@ -25,7 +25,7 @@ void Chessboard::update(ChessboardUpdate &update)
   // add the current state of the board to the history
   piecesMean.push_back(update);
   // delete the oldest state if the history is too long
-  int numFrames = 15;
+  int numFrames = 33;
   if (piecesMean.size() > numFrames)
   {
     piecesMean.erase(piecesMean.begin());
@@ -48,7 +48,7 @@ void Chessboard::update(ChessboardUpdate &update)
     {
       for (auto &p : piece.second)
       {
-        if (p.second > (int)3)
+        if (p.second > 4)
         {
           pieces.push_back(std::make_pair(piece.first, p.first));
         }
@@ -60,7 +60,7 @@ void Chessboard::update(ChessboardUpdate &update)
 void Chessboard::print_board()
 {
 
-  std::cout << "Current board: " << std::endl;
+  std::cout << "Current board with " << pieces.size() << " detected pieces:" << std::endl;
   for (int i = 0; i < 8; i++)
   {
     for (int j = 0; j < 8; j++)
